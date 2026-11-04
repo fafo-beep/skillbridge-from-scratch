@@ -59,6 +59,27 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   return {};
 }
 
+// Email-first step: tells the modal whether this email already has a
+// password account, a social-only account, or nothing. This discloses
+// account existence (as Coursera/Google do) in exchange for a simpler
+// flow; rate limiting at the edge is the standing mitigation.
+export type CheckState = { error?: string; email?: string; exists?: boolean; social?: boolean };
+
+export async function checkEmail(_prev: CheckState, formData: FormData): Promise<CheckState> {
+  if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Please enter a valid email address." };
+  const user = await db.user.findUnique({ where: { email }, select: { passwordHash: true } });
+  return { email, exists: !!user?.passwordHash, social: !!user && !user.passwordHash };
+}
+
+const SOCIAL = new Set(["google", "facebook", "apple"]);
+
+export async function socialSignIn(provider: string) {
+  if (!SOCIAL.has(provider)) redirect("/signin");
+  await signIn(provider, { redirectTo: "/dashboard" });
+}
+
 export async function logout() {
   await signOut({ redirectTo: "/" });
 }

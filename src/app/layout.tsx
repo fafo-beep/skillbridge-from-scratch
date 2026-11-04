@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Source_Sans_3 } from "next/font/google";
 import Link from "next/link";
 import { CATEGORIES, COURSES } from "@/lib/catalog";
+import { oauthProviders } from "@/auth";
+import AuthLauncher from "@/components/AuthLauncher";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -59,15 +61,7 @@ function Header() {
           <Link href="/dashboard" className="hover:text-primary">
             My learning
           </Link>
-          <Link href="/signin" className="hover:text-primary">
-            Sign in
-          </Link>
-          <Link
-            href="/join"
-            className="rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-accent active:translate-y-px"
-          >
-            Join free
-          </Link>
+          <AuthLauncher providers={[...oauthProviders]} />
         </nav>
       </div>
     </header>
