@@ -1,0 +1,164 @@
+// Target data model. Not wired yet — src/lib/catalog.ts mirrors these shapes
+// so the swap to Postgres + Prisma is a data-layer change, not a rewrite.
+//
+// Security intent (the non-negotiables when this goes live):
+// - All authorization server-side; enable Postgres row-level security.
+// - Entitlements (enrollment, premium) are written ONLY by the server,
+//   after Stripe webhook verification. Never from client requests.
+// - Every privileged mutation lands in AuditLog.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  LEARNER
+  REVIEWER
+  ADMIN
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  REFUNDED
+}
+
+enum PortfolioStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  REVISIONS_REQUESTED
+  APPROVED
+  DENIED
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String
+  role        Role         @default(LEARNER)
+  createdAt   DateTime     @default(now())
+  enrollments Enrollment[]
+  portfolios  Portfolio[]
+  payments    Payment[]
+  auditLogs   AuditLog[]
+}
+
+model Category {
+  id      String   @id @default(cuid())
+  slug    String   @unique
+  name    String
+  scope   String
+  courses Course[]
+}
+
+model Course {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  code        String       @unique
+  title       String
+  summary     String
+  credits     Int
+  level       String
+  weeks       Int
+  priceUSD    Int
+  plaEligible Boolean      @default(true)
+  categoryId  String
+  category    Category     @relation(fields: [categoryId], references: [id])
+  outcomes    Outcome[]
+  modules     Module[]
+  enrollments Enrollment[]
+  portfolios  Portfolio[]
+}
+
+model Outcome {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id])
+  position Int
+  text     String
+}
+
+model Module {
+  id       String   @id @default(cuid())
+  courseId String
+  course   Course   @relation(fields: [courseId], references: [id])
+  position Int
+  title    String
+  summary  String
+  lessons  Lesson[]
+}
+
+model Lesson {
+  id       String     @id @default(cuid())
+  moduleId String
+  module   Module     @relation(fields: [moduleId], references: [id])
+  position Int
+  title    String
+  minutes  Int
+  progress Progress[]
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course           @relation(fields: [courseId], references: [id])
+  status    EnrollmentStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  progress  Progress[]
+
+  @@unique([userId, courseId])
+}
+
+model Progress {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  lessonId     String
+  lesson       Lesson     @relation(fields: [lessonId], references: [id])
+  completedAt  DateTime   @default(now())
+
+  @@unique([enrollmentId, lessonId])
+}
+
+model Portfolio {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course          @relation(fields: [courseId], references: [id])
+  status    PortfolioStatus @default(DRAFT)
+  narrative String          @default("")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  stripeSessionId String   @unique
+  amountUSD       Int
+  // Set true only by the Stripe webhook handler after signature verification.
+  verified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  target    String
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

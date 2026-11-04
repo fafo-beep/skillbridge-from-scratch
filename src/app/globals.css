@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* SkillBridge design language.
+   One ground, one ink, one blue. Flat surfaces separated by tone steps.
+   Banned by scripts/design-lint.mjs (enforced in CI): gradients, emoji,
+   backdrop blur, sparkle icons, rainbow accent stripes, resting shadows. */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 215 25% 12%;
+    --card: 214 35% 96%;
+    --card-foreground: 215 25% 12%;
+    --primary: 214 100% 41%; /* #0056D2 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 60% 95%;
+    --secondary-foreground: 214 100% 27%;
+    --muted: 214 30% 94%;
+    --muted-foreground: 215 14% 28%;
+    --accent: 214 100% 27%; /* deep navy-blue */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 68% 44%;
+    --border: 214 25% 87%;
+    --ring: 214 100% 41%;
+    --success: 155 62% 25%;
+    --warning: 36 85% 42%;
+    --radius: 0.25rem;
+  }
+
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --background: 218 45% 8%;
+      --foreground: 214 35% 93%;
+      --card: 218 40% 11%;
+      --card-foreground: 214 35% 93%;
+      --primary: 212 95% 62%;
+      --primary-foreground: 218 45% 8%;
+      --secondary: 217 35% 16%;
+      --secondary-foreground: 214 35% 93%;
+      --muted: 217 35% 16%;
+      --muted-foreground: 214 20% 68%;
+      --accent: 212 95% 72%;
+      --accent-foreground: 218 45% 8%;
+      --border: 217 35% 17%;
+      --ring: 212 95% 62%;
+      --success: 155 55% 45%;
+      --warning: 36 85% 55%;
+    }
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+/* Entrances: elements rise once as they first appear (added by <Reveal/>).
+   Content is visible by default; reduced motion skips entirely. */
+.ts-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.ts-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
