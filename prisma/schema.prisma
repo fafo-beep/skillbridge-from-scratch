@@ -39,7 +39,7 @@ model User {
   id           String       @id @default(cuid())
   email        String       @unique
   name         String
-  passwordHash String
+  passwordHash String?
   role         Role         @default(LEARNER)
   premium      Boolean      @default(false)
   createdAt    DateTime     @default(now())
@@ -47,6 +47,19 @@ model User {
   portfolios   Portfolio[]
   payments     Payment[]
   auditLogs    AuditLog[]
+  oauthAccounts OAuthAccount[]
+}
+
+model OAuthAccount {
+  id                String  @id @default(cuid())
+  provider          String
+  providerAccountId String
+  // Whether the provider asserted a verified email when this link was made.
+  emailVerified     Boolean @default(false)
+  userId            String
+  user              User    @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
 }
 
 model Category {

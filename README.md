@@ -77,6 +77,26 @@ state instead of crashing.
    `DATABASE_URL=... npm run db:migrate && DATABASE_URL=... npm run db:seed`
 4. Redeploy. Accounts, enrollments and progress are live.
 
+## Social sign-in (Google / Facebook / Apple)
+
+Each provider's button appears automatically once its two env vars are
+set (locally in `.env`, or in Vercel): `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`,
+`AUTH_FACEBOOK_ID`/`AUTH_FACEBOOK_SECRET`, `AUTH_APPLE_ID`/`AUTH_APPLE_SECRET`.
+No code change needed. Register the callback URL
+`https://<your-domain>/api/auth/callback/<provider>` with each provider:
+
+- Google: console.cloud.google.com → APIs & Services → Credentials →
+  OAuth client ID (web application). Free.
+- Facebook: developers.facebook.com → create an app → Facebook Login.
+  Free; app review needed before the public can use it.
+- Apple: developer.apple.com → Certificates → Services ID. Requires the
+  paid Apple Developer Program ($99/yr); Apple also requires it if you
+  ship iOS apps with other social logins.
+
+Social accounts link to email accounts by verified email address: signing
+in with Google for an address that already has a password account signs
+into that same account.
+
 `npm run build` must pass with `npm run design-lint` clean before merge; CI
 enforces both.
 

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AuthForm from "@/components/AuthForm";
+import SocialButtons from "@/components/SocialButtons";
 import { register } from "@/lib/actions";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Join free" };
 
@@ -12,7 +15,8 @@ export default function JoinPage() {
       <p className="mt-3 leading-relaxed">
         See what your experience could be worth. No card needed.
       </p>
-      <div className="mt-8">
+      <div className="mt-8 space-y-6">
+        <SocialButtons />
         <AuthForm action={register} mode="join" />
       </div>
       <p className="mt-6 text-sm text-muted-foreground">
