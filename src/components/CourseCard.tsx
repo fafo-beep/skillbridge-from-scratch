@@ -6,10 +6,10 @@ export default function CourseCard({ course }: { course: Course }) {
   return (
     <Link
       href={`/courses/${course.slug}`}
-      className="group flex h-full flex-col rounded-md transition-transform duration-150 hover:-translate-y-0.5"
+      className="group flex h-full flex-col rounded-lg transition-transform duration-150 hover:-translate-y-0.5"
     >
       <CourseTile course={course} />
-      <div className="flex flex-1 flex-col rounded-b-md bg-card p-6">
+      <div className="flex flex-1 flex-col rounded-b-lg bg-card p-6">
         <h3 className="text-lg font-bold leading-snug group-hover:text-primary">
           {course.title}
         </h3>

@@ -42,11 +42,11 @@ export default async function CatalogPage({
           type="search"
           defaultValue={q ?? ""}
           placeholder="Search by title, code, or outcome"
-          className="h-11 flex-1 rounded-md border border-border bg-background px-4 text-sm placeholder:text-muted-foreground"
+          className="h-11 flex-1 rounded-full border border-border bg-background px-5 text-sm placeholder:text-muted-foreground"
         />
         <button
           type="submit"
-          className="rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
+          className="rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
         >
           Search
         </button>
@@ -55,7 +55,7 @@ export default async function CatalogPage({
       <nav className="mt-6 flex flex-wrap gap-2" aria-label="Filter by field">
         <Link
           href="/catalog"
-          className={`rounded-md px-4 py-2 text-sm font-semibold ${
+          className={`rounded-full px-4 py-2 text-sm font-semibold ${
             !activeCategory
               ? "bg-primary text-primary-foreground"
               : "bg-secondary text-secondary-foreground hover:bg-muted"
@@ -67,7 +67,7 @@ export default async function CatalogPage({
           <Link
             key={c.slug}
             href={`/catalog?category=${c.slug}`}
-            className={`rounded-md px-4 py-2 text-sm font-semibold ${
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${
               activeCategory?.slug === c.slug
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-secondary-foreground hover:bg-muted"

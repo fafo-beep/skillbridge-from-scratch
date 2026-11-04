@@ -30,7 +30,7 @@ function Header() {
         <Link href="/" className="text-lg font-bold tracking-tight">
           SkillBridge
         </Link>
-        <form action="/catalog" className="hidden flex-1 max-w-md sm:block">
+        <form action="/catalog" className="relative hidden flex-1 max-w-md sm:block">
           <label htmlFor="site-search" className="sr-only">
             Search courses
           </label>
@@ -39,8 +39,18 @@ function Header() {
             name="q"
             type="search"
             placeholder="What do you want credit for?"
-            className="h-10 w-full rounded-md border border-border bg-background px-4 text-sm placeholder:text-muted-foreground"
+            className="h-11 w-full rounded-full border border-border bg-background pl-5 pr-14 text-sm placeholder:text-muted-foreground"
           />
+          <button
+            type="submit"
+            aria-label="Search"
+            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-accent active:translate-y-[calc(-50%+1px)]"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </button>
         </form>
         <nav className="flex items-center gap-5 text-sm font-semibold">
           <Link href="/catalog" className="hover:text-primary">

@@ -109,9 +109,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* The numbers, plainly */}
-      <section className="bg-accent text-accent-foreground">
-        <div className="mx-auto max-w-6xl px-6 py-16">
+      {/* The numbers, plainly — an inset panel, Coursera-promo style */}
+      <section className="mx-auto max-w-6xl px-6">
+        <div className="rounded-lg bg-accent px-8 py-12 text-accent-foreground sm:px-12">
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
             {stats.map(([value, label]) => (
               <div data-reveal key={label}>

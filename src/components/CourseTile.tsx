@@ -15,7 +15,7 @@ export default function CourseTile({ course }: { course: Course }) {
   const category = getCategory(course.category);
   return (
     <div
-      className={`flex aspect-[16/9] flex-col justify-between rounded-t-md p-5 text-white ${
+      className={`flex aspect-[16/9] flex-col justify-between rounded-t-lg p-5 text-white ${
         TONE[course.category] ?? TONE.business
       }`}
       aria-hidden="true"
