@@ -79,7 +79,7 @@ export default async function CatalogPage({
       </nav>
 
       {results.length > 0 ? (
-        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid gap-x-5 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
           {results.map((c) => (
             <CourseCard key={c.slug} course={c} />
           ))}

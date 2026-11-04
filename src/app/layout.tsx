@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Source_Sans_3 } from "next/font/google";
 import Link from "next/link";
+import { CATEGORIES, COURSES } from "@/lib/catalog";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -63,20 +64,47 @@ function Header() {
 function Footer() {
   return (
     <footer className="bg-accent text-accent-foreground">
-      <div className="mx-auto max-w-6xl overflow-hidden px-6 pb-8 pt-14">
-        <p className="select-none text-[14vw] font-bold leading-none tracking-tight lg:text-[150px]" aria-hidden="true">
+      <div className="mx-auto max-w-6xl overflow-hidden px-6 pb-8 pt-16">
+        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-3">
+          <nav aria-label="Explore">
+            <p className="font-bold">Explore</p>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li><Link href="/catalog" className="hover:underline">Course catalog</Link></li>
+              <li><Link href="/dashboard" className="hover:underline">My learning</Link></li>
+              <li><Link href="/catalog" className="hover:underline">Start a credit check</Link></li>
+            </ul>
+          </nav>
+          <nav aria-label="Fields">
+            <p className="font-bold">Fields</p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {CATEGORIES.map((c) => (
+                <li key={c.slug}>
+                  <Link href={`/catalog?category=${c.slug}`} className="hover:underline">
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <nav aria-label="Pathways">
+            <p className="font-bold">Pathways</p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {COURSES.map((c) => (
+                <li key={c.slug}>
+                  <Link href={`/courses/${c.slug}`} className="hover:underline">
+                    {c.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+        <p className="mt-14 select-none text-[14vw] font-bold leading-none tracking-tight lg:text-[150px]" aria-hidden="true">
           SkillBridge
         </p>
         <div className="mt-8 flex flex-wrap items-baseline justify-between gap-3 text-sm">
           <p>Courses, and credit for what you already know.</p>
-          <nav className="flex gap-5 font-semibold">
-            <Link href="/catalog" className="underline underline-offset-4">
-              Catalog
-            </Link>
-            <Link href="/dashboard" className="underline underline-offset-4">
-              My learning
-            </Link>
-          </nav>
+          <p>Only colleges award credit — check your school&apos;s PLA policy.</p>
         </div>
       </div>
     </footer>

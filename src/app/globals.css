@@ -27,6 +27,12 @@
     --success: 155 62% 25%;
     --warning: 36 85% 42%;
     --radius: 0.25rem;
+    /* Course-tile ramp: one blue family, five tones, white ink on all */
+    --tile-1: 214 100% 41%;
+    --tile-2: 214 100% 27%;
+    --tile-3: 216 85% 17%;
+    --tile-4: 212 88% 34%;
+    --tile-5: 202 95% 28%;
   }
 
   :root:not([data-theme="light"]) {
