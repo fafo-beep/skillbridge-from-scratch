@@ -9,3 +9,5 @@ dist
 .DS_Store
 .vercel
 .taste-skill/
+
+/src/generated/prisma

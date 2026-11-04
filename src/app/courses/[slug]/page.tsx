@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { COURSES, courseMinutes, getCategory, getCourse } from "@/lib/catalog";
+import { enroll, startPortfolio } from "@/lib/actions";
 
 export function generateStaticParams() {
   return COURSES.map((c) => ({ slug: c.slug }));
@@ -73,19 +74,17 @@ export default async function CoursePage({
             <span>{course.priceUSD === 0 ? "Included free" : `$${course.priceUSD}`}</span>
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/dashboard"
-              className="rounded-md bg-background px-6 py-3 font-semibold text-primary hover:bg-secondary active:translate-y-px"
-            >
-              Enroll free
-            </Link>
+            <form action={enroll.bind(null, course.slug)}>
+              <button className="rounded-md bg-background px-6 py-3 font-semibold text-primary hover:bg-secondary active:translate-y-px">
+                Enroll free
+              </button>
+            </form>
             {course.plaEligible && (
-              <Link
-                href="/dashboard"
-                className="rounded-md border border-accent-foreground px-6 py-3 font-semibold hover:bg-primary active:translate-y-px"
-              >
-                Get credit for experience instead
-              </Link>
+              <form action={startPortfolio.bind(null, course.slug)}>
+                <button className="rounded-md border border-accent-foreground px-6 py-3 font-semibold hover:bg-primary active:translate-y-px">
+                  Get credit for experience instead
+                </button>
+              </form>
             )}
           </div>
         </div>
@@ -148,12 +147,11 @@ export default async function CoursePage({
                 Only colleges award credit; confirm your school&apos;s PLA
                 policy before you start.
               </p>
-              <Link
-                href="/dashboard"
-                className="mt-5 inline-block rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
-              >
-                Start the credit check
-              </Link>
+              <form action={startPortfolio.bind(null, course.slug)}>
+                <button className="mt-5 inline-block rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
+                  Start the credit check
+                </button>
+              </form>
             </div>
           )}
           <div className="mt-5 rounded-md bg-card p-6">

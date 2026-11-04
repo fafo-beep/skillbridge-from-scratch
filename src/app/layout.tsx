@@ -59,8 +59,11 @@ function Header() {
           <Link href="/dashboard" className="hover:text-primary">
             My learning
           </Link>
+          <Link href="/signin" className="hover:text-primary">
+            Sign in
+          </Link>
           <Link
-            href="/catalog"
+            href="/join"
             className="rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-accent active:translate-y-px"
           >
             Join free

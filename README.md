@@ -15,10 +15,13 @@ JSON-LD, a sitemap, and robots rules from day one.
 - `src/app/` — pages: home, `/catalog` (search + category filter, all
   server-side), `/courses/[slug]` (statically generated per course),
   `/dashboard` (sample data until auth lands)
-- `src/lib/catalog.ts` — typed data layer; mirrors `db/schema.prisma`
-  one-for-one so the Postgres swap changes no page code
-- `db/schema.prisma` — the target data model (users, courses, enrollments,
-  progress, portfolios, payments, audit log). Not wired yet.
+- `src/lib/catalog.ts` — the typed course content (source of truth; the
+  seed script loads it into the database)
+- `prisma/schema.prisma` — the data model (users, courses, enrollments,
+  progress, portfolios, payments, audit log), live via Prisma + Postgres
+- `src/auth.ts`, `src/lib/actions.ts` — Auth.js (credentials + JWT) and
+  the server actions: register, sign in, enroll, lesson progress,
+  portfolio creation. Every action re-checks the session server-side.
 - `scripts/design-lint.mjs` — the design gate, run in CI
 
 ## Design language
@@ -43,16 +46,44 @@ Client code never decides entitlements. When the backend lands:
 
 ```bash
 npm install
+```
+
+Copy `.env.example` to `.env` and set `DATABASE_URL` (any Postgres) and
+`AUTH_SECRET` (`openssl rand -base64 32`). Then:
+
+```bash
+npm run db:migrate
+```
+
+```bash
+npm run db:seed
+```
+
+```bash
 npm run dev
 ```
+
+Without `DATABASE_URL` the site still builds and runs: the catalog is
+static content, and the dashboard/auth pages show a "not switched on yet"
+state instead of crashing.
+
+## Deploying with a database (Vercel + Neon)
+
+1. Create a free Postgres at [neon.tech](https://neon.tech) and copy its
+   connection string.
+2. In Vercel → Project → Settings → Environment Variables, set
+   `DATABASE_URL`, `AUTH_SECRET`, and `NEXT_PUBLIC_SITE_URL`.
+3. Run the migration and seed once against that database from any machine:
+   `DATABASE_URL=... npm run db:migrate && DATABASE_URL=... npm run db:seed`
+4. Redeploy. Accounts, enrollments and progress are live.
 
 `npm run build` must pass with `npm run design-lint` clean before merge; CI
 enforces both.
 
 ## Roadmap
 
-1. Auth (Auth.js) + Postgres/Prisma, replacing `src/lib/catalog.ts` reads
-2. Enrollment, lesson pages, and real progress
-3. PLA portfolio builder and reviewer flow (the differentiator)
-4. Stripe Checkout + webhooks for the one-time upgrade
-5. Video via Mux/Cloudflare Stream with signed playback
+1. PLA portfolio builder (narrative + evidence per outcome) and the
+   reviewer flow (the differentiator)
+2. Stripe Checkout + webhooks for the one-time upgrade
+3. Lesson content pages and video via Mux/Cloudflare Stream
+4. Real photography for the marketing pages

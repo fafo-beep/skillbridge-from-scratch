@@ -56,8 +56,11 @@ const RULES = [
 const root = process.argv[2] ?? "src";
 const findings = [];
 
+const SKIP_DIRS = new Set(["generated", "node_modules", ".next"]);
+
 function walk(dir) {
   for (const name of readdirSync(dir)) {
+    if (SKIP_DIRS.has(name)) continue;
     const p = join(dir, name);
     const st = statSync(p);
     if (st.isDirectory()) walk(p);
