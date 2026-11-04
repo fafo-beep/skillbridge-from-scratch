@@ -71,32 +71,42 @@ export default function HomePage() {
     <div>
       <Reveal />
 
-      {/* Hero: the claim, then the evaluation that proves it */}
-      <section className="mx-auto max-w-6xl px-6 pb-24 pt-16 sm:pt-24">
-        <h1 className="max-w-4xl text-[10vw] font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-          Learn the new. Credit the rest.
-        </h1>
-        <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <p className="max-w-xl text-lg leading-relaxed">
-            SkillBridge is a course platform for working adults: every pathway
-            teaches the skills a role demands, and recognizes the ones your
-            years of work already prove — through Prior Learning Assessment
-            your college can review.
-          </p>
-          <div className="shrink-0">
-            <Link
-              href="/catalog"
-              className="inline-block rounded-md bg-primary px-8 py-4 text-base font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
-            >
-              Browse the catalog
-            </Link>
+      {/* Hero: a pale field over the whole top; claim left, proof right */}
+      <section className="bg-card">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 pb-20 pt-14 sm:pt-16 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <h1 className="text-[10vw] font-bold leading-[1.02] tracking-tight sm:text-6xl">
+              Learn the new. Credit the rest.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed">
+              SkillBridge is a course platform for working adults: every pathway
+              teaches the skills a role demands, and recognizes the ones your
+              years of work already prove — through Prior Learning Assessment
+              your college can review.
+            </p>
+            <div className="mt-8">
+              <Link
+                href="/catalog"
+                className="inline-block rounded-md bg-primary px-8 py-4 text-base font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
+              >
+                Browse the catalog
+              </Link>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Free to join. No card needed.
+              </p>
+            </div>
+          </div>
+          <div>
+            <DecisionFragment />
             <p className="mt-3 text-sm text-muted-foreground">
-              Free to join. No card needed.
+              Where every pathway can end: credit your college can review.
             </p>
           </div>
         </div>
+      </section>
 
-        <div className="mt-20">
+      <section className="mx-auto max-w-6xl px-6 pb-24">
+        <div className="pt-20">
           <h2 data-reveal className="text-2xl font-bold">
             What eight years on the job can be worth
           </h2>
@@ -177,7 +187,7 @@ export default function HomePage() {
         <h2 data-reveal className="max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
           One place for the course and the credit
         </h2>
-        <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
+        <div className="mt-10 grid items-start gap-5 lg:grid-cols-3">
           <div data-reveal>
             <PlayerFragment />
             <p className="mt-3 text-sm text-muted-foreground">
@@ -194,12 +204,6 @@ export default function HomePage() {
             <EvidenceFragment />
             <p className="mt-3 text-sm text-muted-foreground">
               Proof you already have, filed where evaluators look.
-            </p>
-          </div>
-          <div data-reveal>
-            <DecisionFragment />
-            <p className="mt-3 text-sm text-muted-foreground">
-              The credit recommendation, ready for your college.
             </p>
           </div>
         </div>

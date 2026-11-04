@@ -56,6 +56,26 @@
     }
   }
 
+  /* Explicit choice from the theme toggle; mirrors the block above. */
+  :root[data-theme="dark"] {
+    --background: 218 45% 8%;
+    --foreground: 214 35% 93%;
+    --card: 218 40% 11%;
+    --card-foreground: 214 35% 93%;
+    --primary: 212 95% 62%;
+    --primary-foreground: 218 45% 8%;
+    --secondary: 217 35% 16%;
+    --secondary-foreground: 214 35% 93%;
+    --muted: 217 35% 16%;
+    --muted-foreground: 214 20% 68%;
+    --accent: 212 95% 72%;
+    --accent-foreground: 218 45% 8%;
+    --border: 217 35% 17%;
+    --ring: 212 95% 62%;
+    --success: 155 55% 45%;
+    --warning: 36 85% 55%;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CATEGORIES, COURSES } from "@/lib/catalog";
 import { oauthProviders } from "@/auth";
 import AuthLauncher from "@/components/AuthLauncher";
+import ThemeToggle from "@/components/ThemeToggle";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 
 function Header() {
   return (
-    <header className="bg-background">
+    <header className="bg-card">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Link href="/" className="text-lg font-bold tracking-tight">
           SkillBridge
@@ -54,14 +55,15 @@ function Header() {
             </svg>
           </button>
         </form>
-        <nav className="flex items-center gap-5 text-sm font-semibold">
-          <Link href="/catalog" className="hover:text-primary">
+        <nav className="flex items-center gap-3 text-sm font-semibold sm:gap-5">
+          <Link href="/catalog" className="hidden hover:text-primary sm:inline">
             Catalog
           </Link>
-          <Link href="/dashboard" className="hover:text-primary">
+          <Link href="/dashboard" className="hidden hover:text-primary md:inline">
             My learning
           </Link>
           <AuthLauncher providers={[...oauthProviders]} />
+          <ThemeToggle />
         </nav>
       </div>
     </header>
@@ -120,7 +122,16 @@ function Footer() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={sourceSans.variable}>
+    <html lang="en" className={sourceSans.variable} suppressHydrationWarning>
+      <head>
+        <script
+          // Applies the stored theme before first paint so there is no flash.
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}',
+          }}
+        />
+      </head>
       <body className="flex min-h-svh flex-col">
         <Header />
         <main className="flex-1">{children}</main>
