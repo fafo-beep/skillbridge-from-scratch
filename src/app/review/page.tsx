@@ -17,7 +17,7 @@ export default async function ReviewQueuePage() {
 
   const [queue, mine, decided] = await Promise.all([
     db.portfolio.findMany({
-      where: { status: "SUBMITTED" },
+      where: { status: "SUBMITTED", userId: { not: viewerId } },
       include: { course: true, user: { select: { name: true } } },
       orderBy: { updatedAt: "asc" },
     }),

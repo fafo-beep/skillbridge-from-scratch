@@ -84,21 +84,30 @@ async function main() {
     }
   }
 
-  // Dev/test reviewer account — created ONLY when SEED_DEV_USERS=1 is set
-  // explicitly (never in a default production seed).
-  if (process.env.SEED_DEV_USERS === "1") {
-    const bcrypt = await import("bcryptjs");
-    await prisma.user.upsert({
-      where: { email: "reviewer@dev.local" },
-      update: { role: "REVIEWER" },
-      create: {
-        email: "reviewer@dev.local",
-        name: "Dev Reviewer",
-        role: "REVIEWER",
-        passwordHash: await bcrypt.default.hash("dev-reviewer-pass", 12),
-      },
-    });
-    console.log("Dev reviewer seeded: reviewer@dev.local");
+  // Dev/test reviewer — requires BOTH an explicit flag and an explicit
+  // password from the environment (nothing committed), refuses to run in
+  // production, and never promotes a pre-existing account (create-only).
+  if (process.env.SEED_DEV_USERS === "1" && process.env.NODE_ENV !== "production") {
+    const password = process.env.SEED_DEV_PASSWORD;
+    if (!password || password.length < 10) {
+      console.log("SEED_DEV_USERS set but SEED_DEV_PASSWORD missing/short; skipping dev reviewer.");
+    } else {
+      const existing = await prisma.user.findUnique({ where: { email: "reviewer@dev.local" } });
+      if (existing) {
+        console.log("reviewer@dev.local already exists; not modifying it.");
+      } else {
+        const bcrypt = await import("bcryptjs");
+        await prisma.user.create({
+          data: {
+            email: "reviewer@dev.local",
+            name: "Dev Reviewer",
+            role: "REVIEWER",
+            passwordHash: await bcrypt.default.hash(password, 12),
+          },
+        });
+        console.log("Dev reviewer seeded: reviewer@dev.local");
+      }
+    }
   }
 
   const counts = {

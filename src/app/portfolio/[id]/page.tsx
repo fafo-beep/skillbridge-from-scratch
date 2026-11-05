@@ -46,7 +46,14 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
 
   const viewer = await db.user.findUnique({ where: { id: viewerId } });
   const isOwner = portfolio.userId === viewerId;
-  const isReviewer = viewer?.role === "REVIEWER" || viewer?.role === "ADMIN";
+  const hasReviewerRole = viewer?.role === "REVIEWER" || viewer?.role === "ADMIN";
+  // A reviewer sees only what the role needs: the open queue (SUBMITTED)
+  // and their own claimed or decided reviews — never drafts, revisions in
+  // progress, or another evaluator's case.
+  const isReviewer =
+    hasReviewerRole &&
+    !isOwner &&
+    (portfolio.status === "SUBMITTED" || portfolio.evaluatorId === viewerId);
   if (!isOwner && !isReviewer) notFound();
 
   const editable = isOwner && EDITABLE.has(portfolio.status);
@@ -62,7 +69,10 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   ).length;
   const total = portfolio.course.outcomes.length;
   const canDecide =
-    isReviewer && portfolio.status === "UNDER_REVIEW" && portfolio.evaluatorId === viewerId;
+    isReviewer &&
+    portfolio.status === "UNDER_REVIEW" &&
+    portfolio.evaluatorId === viewerId &&
+    portfolio.userId !== viewerId;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-14">

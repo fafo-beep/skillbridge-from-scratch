@@ -158,73 +158,103 @@ async function ownedPortfolio(portfolioId: string, userId: string) {
 
 const EDITABLE = new Set(["DRAFT", "REVISIONS_REQUESTED"]);
 
+// Builder writes run in serializable transactions with the status check
+// INSIDE, so a save racing a submit cannot alter content the evaluator
+// will read (the later transaction aborts instead).
+async function editableTx<T>(fn: (tx: Parameters<Parameters<typeof db.$transaction>[0]>[0]) => Promise<T>): Promise<T | undefined> {
+  try {
+    return await db.$transaction(fn, { isolationLevel: "Serializable" });
+  } catch {
+    return undefined; // serialization conflict or validation stop: no write
+  }
+}
+
 export async function saveOutcomeResponse(
   portfolioId: string,
   outcomeId: string,
   formData: FormData
 ) {
   const userId = await requireUserId();
-  const portfolio = await ownedPortfolio(portfolioId, userId);
-  if (!portfolio || !EDITABLE.has(portfolio.status)) return;
-  if (!portfolio.course.outcomes.some((o) => o.id === outcomeId)) return;
   const narrative = String(formData.get("narrative") ?? "").slice(0, 20000);
-  await db.outcomeResponse.upsert({
-    where: { portfolioId_outcomeId: { portfolioId, outcomeId } },
-    update: { narrative },
-    create: { portfolioId, outcomeId, narrative },
+  await editableTx(async (tx) => {
+    const portfolio = await tx.portfolio.findFirst({
+      where: { id: portfolioId, userId, status: { in: ["DRAFT", "REVISIONS_REQUESTED"] } },
+      include: { course: { include: { outcomes: true } } },
+    });
+    if (!portfolio) throw new Error("not editable");
+    if (!portfolio.course.outcomes.some((o) => o.id === outcomeId)) throw new Error("bad outcome");
+    await tx.outcomeResponse.upsert({
+      where: { portfolioId_outcomeId: { portfolioId, outcomeId } },
+      update: { narrative },
+      create: { portfolioId, outcomeId, narrative },
+    });
   });
   revalidatePath(`/portfolio/${portfolioId}`);
 }
 
 export async function addEvidence(portfolioId: string, outcomeId: string, formData: FormData) {
   const userId = await requireUserId();
-  const portfolio = await ownedPortfolio(portfolioId, userId);
-  if (!portfolio || !EDITABLE.has(portfolio.status)) return;
-  if (!portfolio.course.outcomes.some((o) => o.id === outcomeId)) return;
   const title = String(formData.get("title") ?? "").trim().slice(0, 300);
   const kind = String(formData.get("kind") ?? "").trim().slice(0, 100);
   if (!title) return;
-  await db.evidence.create({
-    data: { portfolioId, outcomeId, title, kind: kind || "Work sample" },
+  const done = await editableTx(async (tx) => {
+    const portfolio = await tx.portfolio.findFirst({
+      where: { id: portfolioId, userId, status: { in: ["DRAFT", "REVISIONS_REQUESTED"] } },
+      include: { course: { include: { outcomes: true } } },
+    });
+    if (!portfolio) throw new Error("not editable");
+    if (!portfolio.course.outcomes.some((o) => o.id === outcomeId)) throw new Error("bad outcome");
+    await tx.evidence.create({
+      data: { portfolioId, outcomeId, title, kind: kind || "Work sample" },
+    });
+    return true;
   });
-  await audit(userId, "evidence.add", portfolioId, title);
+  if (done) await audit(userId, "evidence.add", portfolioId, title);
   revalidatePath(`/portfolio/${portfolioId}`);
 }
 
 export async function removeEvidence(evidenceId: string) {
   const userId = await requireUserId();
-  const evidence = await db.evidence.findUnique({
-    where: { id: evidenceId },
-    include: { portfolio: true },
+  const portfolioId = await editableTx(async (tx) => {
+    const evidence = await tx.evidence.findUnique({
+      where: { id: evidenceId },
+      include: { portfolio: true },
+    });
+    if (!evidence || evidence.portfolio.userId !== userId) throw new Error("not owner");
+    if (!EDITABLE.has(evidence.portfolio.status)) throw new Error("not editable");
+    await tx.evidence.delete({ where: { id: evidenceId } });
+    return evidence.portfolioId;
   });
-  if (!evidence || evidence.portfolio.userId !== userId) return;
-  if (!EDITABLE.has(evidence.portfolio.status)) return;
-  await db.evidence.delete({ where: { id: evidenceId } });
-  revalidatePath(`/portfolio/${evidence.portfolioId}`);
+  if (portfolioId) revalidatePath(`/portfolio/${portfolioId}`);
 }
 
 export async function submitPortfolio(portfolioId: string) {
   const userId = await requireUserId();
-  const portfolio = await ownedPortfolio(portfolioId, userId);
-  if (!portfolio || !EDITABLE.has(portfolio.status)) return;
-  const responses = await db.outcomeResponse.findMany({ where: { portfolioId } });
-  const answered = new Set(
-    responses.filter((r) => r.narrative.trim().length >= 50).map((r) => r.outcomeId)
-  );
-  const missing = portfolio.course.outcomes.filter((o) => !answered.has(o.id));
-  if (missing.length > 0) return; // UI explains the 50-char floor per outcome
-  await db.portfolio.update({
-    where: { id: portfolioId },
-    data: {
-      status: "SUBMITTED",
-      // A resubmission starts a fresh evaluation: previous decision cleared.
-      score: null,
-      decisionNote: "",
-      evaluatorId: null,
-      decidedAt: null,
-    },
+  const done = await editableTx(async (tx) => {
+    const portfolio = await tx.portfolio.findFirst({
+      where: { id: portfolioId, userId, status: { in: ["DRAFT", "REVISIONS_REQUESTED"] } },
+      include: { course: { include: { outcomes: true } } },
+    });
+    if (!portfolio) throw new Error("not editable");
+    const responses = await tx.outcomeResponse.findMany({ where: { portfolioId } });
+    const answered = new Set(
+      responses.filter((r) => r.narrative.trim().length >= 50).map((r) => r.outcomeId)
+    );
+    if (portfolio.course.outcomes.some((o) => !answered.has(o.id))) throw new Error("incomplete");
+    await tx.portfolio.update({
+      where: { id: portfolioId },
+      data: {
+        status: "SUBMITTED",
+        // A resubmission starts a fresh evaluation: previous decision cleared.
+        score: null,
+        decisionNote: "",
+        evaluatorId: null,
+        decidedAt: null,
+      },
+    });
+    return portfolio.course.slug;
   });
-  await audit(userId, "portfolio.submit", portfolioId, portfolio.course.slug);
+  if (done) await audit(userId, "portfolio.submit", portfolioId, done);
   revalidatePath(`/portfolio/${portfolioId}`);
   revalidatePath("/dashboard");
 }
@@ -240,19 +270,21 @@ async function requireReviewer(): Promise<string> {
 
 export async function startReview(portfolioId: string) {
   const reviewerId = await requireReviewer();
-  await db.portfolio.updateMany({
-    where: { id: portfolioId, status: "SUBMITTED" },
+  const updated = await db.portfolio.updateMany({
+    // Separation of duties: never your own portfolio.
+    where: { id: portfolioId, status: "SUBMITTED", userId: { not: reviewerId } },
     data: { status: "UNDER_REVIEW", evaluatorId: reviewerId },
   });
-  await audit(reviewerId, "review.start", portfolioId);
   revalidatePath("/review");
+  if (updated.count === 0) redirect("/review"); // already claimed, or not claimable
+  await audit(reviewerId, "review.start", portfolioId);
   redirect(`/portfolio/${portfolioId}`);
 }
 
 export async function decidePortfolio(portfolioId: string, formData: FormData) {
   const reviewerId = await requireReviewer();
   const decision = String(formData.get("decision") ?? "");
-  const score = Math.min(5, Math.max(1, Number(formData.get("score") ?? 0)));
+  const score = Math.min(5, Math.max(1, Math.round(Number(formData.get("score") ?? 0))));
   const note = String(formData.get("note") ?? "").trim().slice(0, 5000);
   const STATUS: Record<string, "APPROVED" | "DENIED" | "REVISIONS_REQUESTED"> = {
     approve: "APPROVED",
@@ -260,9 +292,9 @@ export async function decidePortfolio(portfolioId: string, formData: FormData) {
     revisions: "REVISIONS_REQUESTED",
   };
   const status = STATUS[decision];
-  if (!status || !Number.isFinite(score) || !note) return;
+  if (!status || !Number.isInteger(score) || !note) return;
   const updated = await db.portfolio.updateMany({
-    where: { id: portfolioId, status: "UNDER_REVIEW", evaluatorId: reviewerId },
+    where: { id: portfolioId, status: "UNDER_REVIEW", evaluatorId: reviewerId, userId: { not: reviewerId } },
     data: { status, score, decisionNote: note, decidedAt: new Date() },
   });
   if (updated.count > 0) {
