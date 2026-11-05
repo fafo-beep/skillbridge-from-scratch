@@ -105,10 +105,18 @@ export default async function DashboardPage() {
                     </p>
                     <h3 className="mt-1 text-xl font-bold">{p.course.title}</h3>
                   </div>
-                  <p className="font-semibold text-secondary-foreground">
-                    {STATUS_LABEL[p.status] ?? p.status}
-                  </p>
+                  <Link
+                    href={`/portfolio/${p.id}`}
+                    className="font-semibold text-primary underline underline-offset-4"
+                  >
+                    Open portfolio
+                  </Link>
                 </div>
+                <p className="mt-3 font-semibold text-secondary-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {p.status === "APPROVED" && p.score != null
+                    ? `${STATUS_LABEL[p.status]} · ${p.course.credits} credits · score ${p.score}/5`
+                    : STATUS_LABEL[p.status] ?? p.status}
+                </p>
               </div>
             ))}
           </div>

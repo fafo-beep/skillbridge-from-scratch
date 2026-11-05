@@ -142,15 +142,44 @@ model Progress {
 }
 
 model Portfolio {
-  id        String          @id @default(cuid())
-  userId    String
-  user      User            @relation(fields: [userId], references: [id])
-  courseId  String
-  course    Course          @relation(fields: [courseId], references: [id])
-  status    PortfolioStatus @default(DRAFT)
-  narrative String          @default("")
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id])
+  courseId     String
+  course       Course            @relation(fields: [courseId], references: [id])
+  status       PortfolioStatus   @default(DRAFT)
+  narrative    String            @default("")
+  // Evaluation result (set only by reviewer/admin actions)
+  score        Int?
+  decisionNote String            @default("")
+  evaluatorId  String?
+  decidedAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  responses    OutcomeResponse[]
+  evidence     Evidence[]
+}
+
+model OutcomeResponse {
+  id          String    @id @default(cuid())
+  portfolioId String
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
+  outcomeId   String
+  narrative   String    @default("")
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([portfolioId, outcomeId])
+}
+
+model Evidence {
+  id          String    @id @default(cuid())
+  portfolioId String
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
+  outcomeId   String
+  title       String
+  kind        String
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
 }
 
 model Payment {

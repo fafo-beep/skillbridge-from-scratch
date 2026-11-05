@@ -84,6 +84,23 @@ async function main() {
     }
   }
 
+  // Dev/test reviewer account — created ONLY when SEED_DEV_USERS=1 is set
+  // explicitly (never in a default production seed).
+  if (process.env.SEED_DEV_USERS === "1") {
+    const bcrypt = await import("bcryptjs");
+    await prisma.user.upsert({
+      where: { email: "reviewer@dev.local" },
+      update: { role: "REVIEWER" },
+      create: {
+        email: "reviewer@dev.local",
+        name: "Dev Reviewer",
+        role: "REVIEWER",
+        passwordHash: await bcrypt.default.hash("dev-reviewer-pass", 12),
+      },
+    });
+    console.log("Dev reviewer seeded: reviewer@dev.local");
+  }
+
   const counts = {
     categories: await prisma.category.count(),
     courses: await prisma.course.count(),
