@@ -100,10 +100,21 @@ into that same account.
 `npm run build` must pass with `npm run design-lint` clean before merge; CI
 enforces both.
 
+## Payments (Stripe)
+
+The $99 one-time upgrade uses Stripe Checkout. Set `STRIPE_SECRET_KEY`
+and `STRIPE_WEBHOOK_SECRET`; register the webhook endpoint
+`https://<your-domain>/api/stripe/webhook` for `checkout.session.completed`
+and `checkout.session.async_payment_succeeded`. Premium is granted only by
+that webhook after signature verification — the success redirect proves
+nothing and grants nothing. Every checkout and verification is audited.
+
+Free tier: one portfolio evaluated. Premium: unlimited.
+
 ## Roadmap
 
-1. PLA portfolio builder (narrative + evidence per outcome) and the
-   reviewer flow (the differentiator)
-2. Stripe Checkout + webhooks for the one-time upgrade
+1. Email verification at registration and password reset (needs an
+   email provider), rate limiting on auth and write endpoints
+2. Evidence file upload (needs blob storage), PDF export
 3. Lesson content pages and video via Mux/Cloudflare Stream
 4. Real photography for the marketing pages

@@ -49,6 +49,7 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
+  const me = await db.user.findUnique({ where: { id: userId }, select: { premium: true } });
   const [enrollments, portfolios] = await Promise.all([
     db.enrollment.findMany({
       where: { userId },
@@ -69,11 +70,20 @@ export default async function DashboardPage() {
     <div className="mx-auto max-w-6xl px-6 py-14">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="text-4xl font-bold leading-tight">My learning</h1>
-        <form action={logout}>
-          <button className="text-sm font-semibold text-primary underline underline-offset-4">
-            Sign out ({session.user.name ?? session.user.email})
-          </button>
-        </form>
+        <div className="flex flex-wrap items-baseline gap-5 text-sm font-semibold">
+          {me?.premium ? (
+            <span className="text-secondary-foreground">Full plan</span>
+          ) : (
+            <Link href="/upgrade" className="text-primary underline underline-offset-4">
+              Free plan · upgrade
+            </Link>
+          )}
+          <form action={logout}>
+            <button className="text-primary underline underline-offset-4">
+              Sign out ({session.user.name ?? session.user.email})
+            </button>
+          </form>
+        </div>
       </div>
 
       {enrollments.length === 0 && portfolios.length === 0 && (

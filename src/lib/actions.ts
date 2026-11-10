@@ -241,6 +241,14 @@ export async function submitPortfolio(portfolioId: string) {
       responses.filter((r) => r.narrative.trim().length >= 50).map((r) => r.outcomeId)
     );
     if (portfolio.course.outcomes.some((o) => !answered.has(o.id))) throw new Error("incomplete");
+    // Free tier: one portfolio evaluated. Further submissions need premium.
+    const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!user.premium) {
+      const others = await tx.portfolio.count({
+        where: { userId, id: { not: portfolioId }, status: { not: "DRAFT" } },
+      });
+      if (others >= 1) throw new Error("premium-required");
+    }
     await tx.portfolio.update({
       where: { id: portfolioId },
       data: {
@@ -257,6 +265,12 @@ export async function submitPortfolio(portfolioId: string) {
   if (done) await audit(userId, "portfolio.submit", portfolioId, done);
   revalidatePath(`/portfolio/${portfolioId}`);
   revalidatePath("/dashboard");
+  if (!done && !(await db.user.findUnique({ where: { id: userId } }))?.premium) {
+    const others = await db.portfolio.count({
+      where: { userId, id: { not: portfolioId }, status: { not: "DRAFT" } },
+    });
+    if (others >= 1) redirect("/upgrade?reason=limit");
+  }
 }
 
 // ── Reviewer flow (role enforced server-side) ────────────────────────────
@@ -303,4 +317,56 @@ export async function decidePortfolio(portfolioId: string, formData: FormData) {
   revalidatePath(`/portfolio/${portfolioId}`);
   revalidatePath("/review");
   redirect("/review");
+}
+
+// ── Payments ─────────────────────────────────────────────────────────────
+// Checkout creates a pending Payment row and sends the user to Stripe.
+// Premium is granted only by the webhook (src/app/api/stripe/webhook).
+
+export async function startCheckout() {
+  const userId = await requireUserId();
+  const { stripe, stripeConfigured, PREMIUM_PRICE_USD } = await import("@/lib/stripe");
+  if (!stripeConfigured) redirect("/upgrade");
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) redirect("/signin");
+  if (user.premium) redirect("/dashboard");
+
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+
+  const priceId = process.env.STRIPE_PRICE_ID;
+  const session = await stripe().checkout.sessions.create({
+    mode: "payment",
+    customer_email: user.email,
+    client_reference_id: userId,
+    metadata: { userId },
+    line_items: [
+      priceId
+        ? { price: priceId, quantity: 1 }
+        : {
+            quantity: 1,
+            price_data: {
+              currency: "usd",
+              unit_amount: PREMIUM_PRICE_USD * 100,
+              product_data: {
+                name: "SkillBridge full portfolio",
+                description: "Unlimited credit portfolios and faculty evaluations. One payment, nothing recurring.",
+              },
+            },
+          },
+    ],
+    success_url: `${origin}/upgrade/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/upgrade`,
+  });
+
+  await db.payment.upsert({
+    where: { stripeSessionId: session.id },
+    update: {},
+    create: { userId, stripeSessionId: session.id, amountUSD: PREMIUM_PRICE_USD },
+  });
+  await audit(userId, "payment.checkout_started", session.id);
+  redirect(session.url ?? "/upgrade");
 }
