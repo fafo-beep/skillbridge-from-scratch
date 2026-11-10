@@ -5,7 +5,16 @@ import { execSync } from "node:child_process";
 
 const run = (cmd) => execSync(cmd, { stdio: "inherit" });
 
-const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
+const resolveDatabaseUrl = (env = process.env) => {
+  const isPg = (v) => !!v && /^postgres(ql)?:\/\//.test(v);
+  for (const k of ["DATABASE_URL", "POSTGRES_PRISMA_URL", "POSTGRES_URL"]) if (isPg(env[k])) return env[k];
+  for (const suffix of ["_POSTGRES_PRISMA_URL", "_DATABASE_URL", "_POSTGRES_URL", "_URL"]) {
+    const key = Object.keys(env).find((k) => k.endsWith(suffix) && isPg(env[k]));
+    if (key) return env[key];
+  }
+  return "";
+};
+const dbUrl = resolveDatabaseUrl();
 if (dbUrl) {
   process.env.DATABASE_URL = dbUrl;
   console.log("DATABASE_URL set: applying migrations and seeding catalog");
