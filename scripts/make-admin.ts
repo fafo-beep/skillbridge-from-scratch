@@ -9,7 +9,7 @@ if (!email) {
   console.error("usage: npx tsx scripts/make-admin.ts <email>");
   process.exit(1);
 }
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || "" }) });
 prisma.user
   .update({ where: { email }, data: { role: "ADMIN" } })
   .then(async (u) => {

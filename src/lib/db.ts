@@ -5,12 +5,19 @@ import { PrismaPg } from "@prisma/adapter-pg";
 // set (e.g. a fresh deployment before the database is provisioned); callers
 // fall back to read-only sample behavior instead of crashing.
 
-export const dbConfigured = Boolean(process.env.DATABASE_URL);
+// Vercel database integrations may name the variable POSTGRES_URL or
+// POSTGRES_PRISMA_URL instead of DATABASE_URL; accept any of them.
+export const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.POSTGRES_URL ||
+  "";
+export const dbConfigured = Boolean(DATABASE_URL);
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function makeClient(): PrismaClient {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+  const adapter = new PrismaPg({ connectionString: DATABASE_URL });
   return new PrismaClient({ adapter });
 }
 
