@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
+import { NameFields, PasswordField } from "@/components/AuthFields";
 
 const field =
   "h-11 w-full rounded-md border border-border bg-background px-4 text-base placeholder:text-muted-foreground";
@@ -17,12 +18,7 @@ export default function AuthForm({
   return (
     <form action={formAction} className="space-y-4">
       {mode === "join" && (
-        <div>
-          <label htmlFor="name" className="mb-1.5 block text-sm font-semibold">
-            Your name
-          </label>
-          <input id="name" name="name" autoComplete="name" required defaultValue={state.name} className={field} />
-        </div>
+        <NameFields idPrefix="join" firstName={state.firstName} lastName={state.lastName} />
       )}
       <div>
         <label htmlFor="email" className="mb-1.5 block text-sm font-semibold">
@@ -38,26 +34,7 @@ export default function AuthForm({
           className={field}
         />
       </div>
-      <div>
-        <label htmlFor="password" className="mb-1.5 block text-sm font-semibold">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete={mode === "join" ? "new-password" : "current-password"}
-          required
-          minLength={mode === "join" ? 10 : undefined}
-          aria-describedby={mode === "join" ? "password-note" : undefined}
-          className={field}
-        />
-        {mode === "join" && (
-          <p id="password-note" className="mt-1.5 text-sm text-muted-foreground">
-            At least 10 characters.
-          </p>
-        )}
-      </div>
+      <PasswordField id="password" mode={mode === "join" ? "new" : "current"} />
       {state.error && (
         <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
           {state.error}

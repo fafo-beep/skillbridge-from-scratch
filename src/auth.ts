@@ -120,10 +120,14 @@ async function resolveOAuthUser(opts: {
   }
 
   // 3. Fresh sign-up through the provider.
+  const display = name || email.split("@")[0];
+  const [firstName, ...rest] = display.split(" ");
   const created = await db.user.create({
     data: {
       email,
-      name: name || email.split("@")[0],
+      name: display,
+      firstName: firstName || null,
+      lastName: rest.join(" ") || null,
       passwordHash: null,
       oauthAccounts: { create: { provider, providerAccountId, emailVerified } },
     },

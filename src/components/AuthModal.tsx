@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { checkEmail, login, register, socialSignIn, type CheckState } from "@/lib/actions";
+import { NameFields, PasswordField } from "@/components/AuthFields";
 
 // Coursera-style auth dialog: one entry point for both log in and sign up.
 // Email first; the next step shows only what that email needs (password for
@@ -86,7 +87,7 @@ function EmailStep({
     {} as CheckState
   );
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="auth-step space-y-4">
       <div>
         <label htmlFor="modal-email" className="mb-1.5 block text-sm font-semibold">
           Email
@@ -127,7 +128,17 @@ function PasswordStep({
   const action = mode === "login" ? login : register;
   const [state, formAction, pending] = useActionState(action, {});
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="auth-step space-y-4">
+      <div>
+        <h3 className="text-xl font-bold">
+          {mode === "login" ? "Welcome back" : "Create your account"}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {mode === "login"
+            ? "Enter your password to pick up where you left off."
+            : "No account yet for this email — this takes a moment."}
+        </p>
+      </div>
       <div className="flex items-baseline justify-between gap-4 rounded-md bg-card px-4 py-3 text-sm">
         <span className="truncate font-semibold">{email}</span>
         <button type="button" onClick={onBack} className="shrink-0 font-semibold text-primary underline underline-offset-4">
@@ -136,34 +147,9 @@ function PasswordStep({
       </div>
       <input type="hidden" name="email" value={email} />
       {mode === "register" && (
-        <div>
-          <label htmlFor="modal-name" className="mb-1.5 block text-sm font-semibold">
-            Your name
-          </label>
-          <input id="modal-name" name="name" autoComplete="name" required autoFocus defaultValue={state.name} className={field} />
-        </div>
+        <NameFields idPrefix="modal" firstName={state.firstName} lastName={state.lastName} autoFocus />
       )}
-      <div>
-        <label htmlFor="modal-password" className="mb-1.5 block text-sm font-semibold">
-          {mode === "register" ? "Choose a password" : "Password"}
-        </label>
-        <input
-          id="modal-password"
-          name="password"
-          type="password"
-          autoComplete={mode === "register" ? "new-password" : "current-password"}
-          required
-          autoFocus={mode === "login"}
-          minLength={mode === "register" ? 10 : undefined}
-          aria-describedby={mode === "register" ? "modal-password-note" : undefined}
-          className={field}
-        />
-        {mode === "register" && (
-          <p id="modal-password-note" className="mt-1.5 text-sm text-muted-foreground">
-            At least 10 characters.
-          </p>
-        )}
-      </div>
+      <PasswordField id="modal-password" mode={mode === "register" ? "new" : "current"} autoFocus={mode === "login"} />
       {state.error && (
         <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
           {state.error}
@@ -237,7 +223,7 @@ export default function AuthModal({
           </button>
         </div>
         <p className="mt-2 leading-relaxed text-muted-foreground">
-          Turn work experience into college credit. Free to start, no card needed.
+          Enter your email. We&apos;ll sign you in, or set you up in a moment — free, no card needed.
         </p>
 
         <div className="mt-6">

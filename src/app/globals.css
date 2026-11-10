@@ -108,3 +108,15 @@
     transition: none;
   }
 }
+
+/* Auth dialog steps slide in; transform and opacity only. */
+.auth-step {
+  animation: auth-step-in 220ms ease-out both;
+}
+@keyframes auth-step-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-step { animation: none; }
+}

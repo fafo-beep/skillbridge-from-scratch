@@ -17,26 +17,30 @@ async function audit(userId: string | null, action: string, target: string, deta
   }
 }
 
-export type FormState = { error?: string; email?: string; name?: string };
+export type FormState = { error?: string; email?: string; name?: string; firstName?: string; lastName?: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function register(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
-  const name = String(formData.get("name") ?? "").trim();
+  const firstName = String(formData.get("firstName") ?? "").trim().slice(0, 100);
+  const lastName = String(formData.get("lastName") ?? "").trim().slice(0, 100);
+  const name = `${firstName} ${lastName}`.trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const echo = { email, firstName, lastName };
 
-  if (name.length < 2) return { error: "Please enter your name.", email, name };
-  if (!EMAIL_RE.test(email)) return { error: "Please enter a valid email address.", email, name };
+  if (!firstName) return { error: "Please enter your first name.", ...echo };
+  if (!lastName) return { error: "Please enter your last name.", ...echo };
+  if (!EMAIL_RE.test(email)) return { error: "Please enter a valid email address.", ...echo };
   if (password.length < 10)
-    return { error: "Use a password of at least 10 characters.", email, name };
+    return { error: "Use a password of at least 10 characters.", ...echo };
 
   const existing = await db.user.findUnique({ where: { email } });
-  if (existing) return { error: "An account with that email already exists. Sign in instead.", email, name };
+  if (existing) return { error: "An account with that email already exists. Sign in instead.", ...echo };
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await db.user.create({ data: { name, email, passwordHash } });
+  const user = await db.user.create({ data: { name, firstName, lastName, email, passwordHash } });
   await audit(user.id, "user.register", user.id);
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
@@ -429,22 +433,26 @@ export async function acceptInvite(token: string, _prev: FormState, formData: Fo
   if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
     return { error: "This invitation is no longer valid. Ask the admin for a new one." };
   }
-  const name = String(formData.get("name") ?? "").trim();
+  const firstName = String(formData.get("firstName") ?? "").trim().slice(0, 100);
+  const lastName = String(formData.get("lastName") ?? "").trim().slice(0, 100);
+  const name = `${firstName} ${lastName}`.trim();
   const password = String(formData.get("password") ?? "");
-  if (name.length < 2) return { error: "Please enter your name.", name };
-  if (password.length < 10) return { error: "Use a password of at least 10 characters.", name };
+  const echo = { firstName, lastName };
+  if (!firstName) return { error: "Please enter your first name.", ...echo };
+  if (!lastName) return { error: "Please enter your last name.", ...echo };
+  if (password.length < 10) return { error: "Use a password of at least 10 characters.", ...echo };
 
   const existing = await db.user.findUnique({ where: { email: invite.email } });
   if (existing) {
     return {
       error: "An account with the invited email already exists. Sign in with it, then open this link again.",
-      name,
+      ...echo,
     };
   }
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await db.$transaction(async (tx) => {
     const u = await tx.user.create({
-      data: { name, email: invite.email, passwordHash, role: invite.role },
+      data: { name, firstName, lastName, email: invite.email, passwordHash, role: invite.role },
     });
     await tx.invite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
     return u;

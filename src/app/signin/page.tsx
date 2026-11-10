@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Sign in" };
 export default function SignInPage() {
   return (
     <div className="mx-auto max-w-md px-6 py-16">
-      <h1 className="text-4xl font-bold leading-tight">Sign in</h1>
+      <h1 className="text-4xl font-bold leading-tight">Welcome back</h1>
       <p className="mt-3 leading-relaxed">Pick up where you left off.</p>
       <div className="mt-8 space-y-6">
         <SocialButtons />
