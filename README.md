@@ -73,9 +73,13 @@ state instead of crashing.
    connection string.
 2. In Vercel → Project → Settings → Environment Variables, set
    `DATABASE_URL`, `AUTH_SECRET`, and `NEXT_PUBLIC_SITE_URL`.
-3. Run the migration and seed once against that database from any machine:
-   `DATABASE_URL=... npm run db:migrate && DATABASE_URL=... npm run db:seed`
-4. Redeploy. Accounts, enrollments and progress are live.
+3. Redeploy. The Vercel build (`scripts/vercel-build.mjs`) applies
+   migrations and seeds the catalog automatically whenever `DATABASE_URL`
+   is set. Accounts, enrollments and progress are live.
+
+Fastest path: Vercel → Storage → Create Database → Postgres (Neon),
+connect it to the project (this sets `DATABASE_URL`), add `AUTH_SECRET`
+under Environment Variables, redeploy.
 
 ## Social sign-in (Google / Facebook / Apple)
 
