@@ -5,9 +5,29 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  DATABASE_URL: postgresql://skillbridge:ci@localhost:5432/skillbridge
+  AUTH_SECRET: ci-only-secret-0123456789abcdefghijklmnopqrstuvwxyz
+  STRIPE_SECRET_KEY: sk_test_dummy
+  STRIPE_WEBHOOK_SECRET: whsec_testsecret_0123456789
+  SEED_DEV_USERS: "1"
+  SEED_DEV_PASSWORD: dev-reviewer-pass
+  AUTH_TRUST_HOST: "true"
+
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: skillbridge
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: skillbridge
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U skillbridge"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,5 +37,24 @@ jobs:
       - run: npm ci
       - name: Design gate (no generated-UI tells)
         run: npm run design-lint
+      - name: Database schema and catalog
+        run: |
+          npx prisma migrate deploy
+          npx tsx prisma/seed.ts
       - name: Build
         run: npm run build
+      - name: Browser for end-to-end tests
+        run: npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          npx next start -p 3000 > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/ > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3000/ > /dev/null
+      - name: End-to-end tests
+        run: BASE_URL=http://localhost:3000 npm run test:e2e
+      - name: Server log on failure
+        if: failure()
+        run: tail -100 server.log

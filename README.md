@@ -101,8 +101,11 @@ Social accounts link to email accounts by verified email address: signing
 in with Google for an address that already has a password account signs
 into that same account.
 
-`npm run build` must pass with `npm run design-lint` clean before merge; CI
-enforces both.
+CI (`.github/workflows/ci.yml`) runs on every push: design gate, migrations
+and seed against a fresh Postgres, build, then the browser end-to-end suite
+(`npm run test:e2e`): accounts, the auth dialog, the full portfolio loop
+through evaluation, the premium gate and Stripe webhook, roles and
+invitations. Nothing merges red.
 
 ## Roles
 
