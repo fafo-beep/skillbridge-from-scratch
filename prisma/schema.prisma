@@ -50,6 +50,18 @@ model User {
   oauthAccounts OAuthAccount[]
 }
 
+// Reviewer/admin onboarding is by invitation only; nobody self-assigns a role.
+model Invite {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  role       Role      @default(REVIEWER)
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  acceptedAt DateTime?
+}
+
 model OAuthAccount {
   id                String  @id @default(cuid())
   provider          String

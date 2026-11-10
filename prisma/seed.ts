@@ -107,6 +107,14 @@ async function main() {
         });
         console.log("Dev reviewer seeded: reviewer@dev.local");
       }
+      const admin = await prisma.user.findUnique({ where: { email: "admin@dev.local" } });
+      if (!admin) {
+        const bcrypt = await import("bcryptjs");
+        await prisma.user.create({
+          data: { email: "admin@dev.local", name: "Dev Admin", role: "ADMIN", passwordHash: await bcrypt.default.hash(password, 12) },
+        });
+        console.log("Dev admin seeded: admin@dev.local");
+      }
     }
   }
 

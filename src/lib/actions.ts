@@ -370,3 +370,101 @@ export async function startCheckout() {
   await audit(userId, "payment.checkout_started", session.id);
   redirect(session.url ?? "/upgrade");
 }
+
+// ── Roles, invitations, admin ────────────────────────────────────────────
+// Reviewer and admin accounts exist only by invitation from an admin.
+
+async function requireAdmin(): Promise<string> {
+  const userId = await requireUserId();
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user || user.role !== "ADMIN") redirect("/dashboard");
+  return userId;
+}
+
+function randomToken(): string {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export type InviteState = { error?: string; link?: string; email?: string };
+
+export async function createInvite(_prev: InviteState, formData: FormData): Promise<InviteState> {
+  const adminId = await requireAdmin();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const role = String(formData.get("role") ?? "REVIEWER") === "ADMIN" ? "ADMIN" : "REVIEWER";
+  if (!EMAIL_RE.test(email)) return { error: "Please enter a valid email address." };
+  const token = randomToken();
+  await db.invite.create({
+    data: {
+      token,
+      email,
+      role,
+      createdBy: adminId,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+  });
+  await audit(adminId, "invite.create", email, role);
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  revalidatePath("/admin");
+  return { link: `${origin}/invite/${token}`, email };
+}
+
+export async function revokeInvite(inviteId: string) {
+  const adminId = await requireAdmin();
+  const invite = await db.invite.findUnique({ where: { id: inviteId } });
+  if (!invite || invite.acceptedAt) return;
+  await db.invite.delete({ where: { id: inviteId } });
+  await audit(adminId, "invite.revoke", invite.email);
+  revalidatePath("/admin");
+}
+
+export async function acceptInvite(token: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
+  const invite = await db.invite.findUnique({ where: { token } });
+  if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+    return { error: "This invitation is no longer valid. Ask the admin for a new one." };
+  }
+  const name = String(formData.get("name") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  if (name.length < 2) return { error: "Please enter your name.", name };
+  if (password.length < 10) return { error: "Use a password of at least 10 characters.", name };
+
+  const existing = await db.user.findUnique({ where: { email: invite.email } });
+  if (existing) {
+    return {
+      error: "An account with the invited email already exists. Sign in with it, then open this link again.",
+      name,
+    };
+  }
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user = await db.$transaction(async (tx) => {
+    const u = await tx.user.create({
+      data: { name, email: invite.email, passwordHash, role: invite.role },
+    });
+    await tx.invite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
+    return u;
+  });
+  await audit(user.id, "invite.accept", invite.email, invite.role);
+  await signIn("credentials", { email: invite.email, password, redirectTo: "/dashboard" });
+  return {};
+}
+
+// A signed-in user whose email matches the invite is promoted in place.
+export async function acceptInviteSignedIn(token: string) {
+  const userId = await requireUserId();
+  const invite = await db.invite.findUnique({ where: { token } });
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!invite || !user || invite.acceptedAt || invite.expiresAt < new Date()) redirect("/dashboard");
+  if (user.email !== invite.email) redirect("/dashboard");
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { role: invite.role } }),
+    db.invite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } }),
+  ]);
+  await audit(userId, "invite.accept", invite.email, invite.role);
+  redirect("/dashboard");
+}

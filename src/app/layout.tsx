@@ -81,6 +81,7 @@ function Footer() {
               <li><Link href="/catalog" className="hover:underline">Course catalog</Link></li>
               <li><Link href="/dashboard" className="hover:underline">My learning</Link></li>
               <li><Link href="/catalog" className="hover:underline">Start a credit check</Link></li>
+              <li><Link href="/evaluators" className="hover:underline">For evaluators</Link></li>
             </ul>
           </nav>
           <nav aria-label="Fields">

@@ -100,6 +100,21 @@ into that same account.
 `npm run build` must pass with `npm run design-lint` clean before merge; CI
 enforces both.
 
+## Roles
+
+One account system, three roles. Learners self-register. Evaluators and
+admins join only by invitation: an admin creates an invite link on
+`/admin` (valid 7 days) and sends it; the link creates the account with
+that role, or promotes an existing account signed in with the invited
+email. After sign-in each role lands on its own home: learners on
+`/dashboard`, evaluators on `/review`, admins on `/admin`.
+
+The first admin of a deployment is promoted by script:
+
+```bash
+DATABASE_URL=... npm run make-admin -- you@example.com
+```
+
 ## Payments (Stripe)
 
 The $99 one-time upgrade uses Stripe Checkout. Set `STRIPE_SECRET_KEY`

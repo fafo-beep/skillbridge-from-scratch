@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { logout, toggleLesson } from "@/lib/actions";
@@ -49,7 +50,9 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
-  const me = await db.user.findUnique({ where: { id: userId }, select: { premium: true } });
+  const me = await db.user.findUnique({ where: { id: userId }, select: { premium: true, role: true } });
+  if (me?.role === "REVIEWER") redirect("/review");
+  if (me?.role === "ADMIN") redirect("/admin");
   const [enrollments, portfolios] = await Promise.all([
     db.enrollment.findMany({
       where: { userId },
