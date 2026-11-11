@@ -152,8 +152,20 @@ nothing and grants nothing. Every checkout and verification is audited.
 
 Free tier: one portfolio evaluated. Premium: unlimited.
 
+## Evidence files (Vercel Blob)
+
+Learners upload the documents that prove each outcome. On Vercel, create
+a Blob store in the Storage tab and connect it to the project, which sets
+`BLOB_READ_WRITE_TOKEN`. Files are stored private: the browser uploads
+straight to the store with a ten-minute token the server issues only for
+the caller's own editable portfolio and outcome, and every download goes
+through `/api/evidence/<id>/file`, which checks that the viewer is the
+owner or staff entitled to the case, then sends the bytes as an attachment
+under a sandbox policy. Accepted: PDF, Word, Excel, PowerPoint, CSV, text,
+PNG and JPG, up to 25 MB. Locally and in CI, `UPLOAD_DIR` keeps the files
+in a folder and the same code path runs against it.
+
 ## Roadmap
 
-1. Evidence file upload (needs blob storage), PDF export
-3. Lesson content pages and video via Mux/Cloudflare Stream
-4. Real photography for the marketing pages
+1. Lesson content pages and video via Mux/Cloudflare Stream
+2. Signed PDFs with a public verification code for registrars

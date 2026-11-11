@@ -12,3 +12,4 @@ dist
 
 /src/generated/prisma
 tsconfig.tsbuildinfo
+.uploads/

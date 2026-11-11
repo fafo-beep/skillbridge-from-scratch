@@ -17,6 +17,7 @@ env:
   SEED_DEV_PASSWORD: dev-reviewer-pass
   AUTH_TRUST_HOST: "true"
   EMAIL_OUTBOX: "1"
+  UPLOAD_DIR: .uploads
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
 jobs:

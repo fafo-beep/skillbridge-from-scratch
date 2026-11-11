@@ -158,10 +158,38 @@ async function documentOutcomes(page, count, story) {
   await L.waitForSelector("text=0 of 3 outcomes documented");
   await documentOutcomes(L, 3, "For six years I wrote the weekly operations memo for a 40-person office, edited every client-facing letter, and rebuilt our proposal template so new staff could produce clean documents without supervision.");
   ok("3 outcomes documented");
+  await L.locator("summary", { hasText: "Name a document you cannot upload" }).first().click();
   await L.fill("#evidence-title-0", "Proposal template v4.docx");
   await L.locator('button:has-text("Add evidence")').first().click();
   await L.waitForSelector("text=Proposal template v4.docx");
   ok("evidence added");
+
+  // A real file: uploaded, listed with its size, downloadable by the owner.
+  const pdfBytes = Buffer.from("%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
+  await L.setInputFiles("#evidence-file-0", { name: "Performance review 2024.pdf", mimeType: "application/pdf", buffer: pdfBytes });
+  await L.locator('button:has-text("Upload")').first().click();
+  await L.waitForSelector("text=Performance review 2024.pdf", { timeout: 30000 });
+  await L.waitForSelector("text=Document · ");
+  ok("file uploaded and listed as evidence");
+  const { rows: ev } = await pg.query(
+    `select e.id, e."fileKey", e."fileSize" from "Evidence" e join "Portfolio" p on p.id=e."portfolioId" join "User" u on u.id=p."userId" where e."fileName"=$1 and u.email=$2`,
+    ["Performance review 2024.pdf", learnerEmail]
+  );
+  if (ev.length !== 1 || !ev[0].fileKey || ev[0].fileSize !== pdfBytes.length) throw new Error("evidence row wrong: " + JSON.stringify(ev));
+  const evidenceId = ev[0].id;
+  const ownerDl = await L.request.get(BASE + `/api/evidence/${evidenceId}/file`);
+  const ownerBody = await ownerDl.body();
+  if (ownerDl.status() !== 200 || !ownerBody.equals(pdfBytes) || !/attachment/.test(ownerDl.headers()["content-disposition"] ?? "") || ownerDl.headers()["content-security-policy"] !== "sandbox; default-src 'none'") {
+    throw new Error(`owner download wrong: ${ownerDl.status()} ${JSON.stringify(ownerDl.headers())}`);
+  }
+  ok("owner downloads the exact bytes, as a sandboxed attachment");
+
+  // Wrong type and spoofed type are refused before anything is stored.
+  const html = Buffer.from("<script>alert(1)</script>");
+  const badType = await L.request.post(BASE + "/api/evidence/upload", { multipart: { file: { name: "evil.html", mimeType: "text/html", buffer: html }, portfolioId: "x", outcomeId: "y" } });
+  const spoofed = await L.request.post(BASE + "/api/evidence/upload", { multipart: { file: { name: "evil.pdf", mimeType: "application/pdf", buffer: html }, portfolioId: ev[0].fileKey.split("/")[1], outcomeId: ev[0].fileKey.split("/")[2] } });
+  if (badType.status() !== 400 || spoofed.status() !== 400) throw new Error(`type checks: ${badType.status()} ${spoofed.status()}`);
+  ok("html upload and html-disguised-as-pdf both refused");
   await L.click('button:has-text("Submit portfolio")');
   await L.waitForSelector("text=Submitted: waiting for an evaluator", { timeout: 20000 });
   ok("submitted (first evaluation is free)");
@@ -177,6 +205,11 @@ async function documentOutcomes(page, count, story) {
   await R.waitForURL("**/portfolio/**", { timeout: 30000 });
   await R.waitForSelector("text=Proposal template v4.docx");
   ok("reviewer sees portfolio and evidence");
+  const revDl = await R.request.get(BASE + `/api/evidence/${evidenceId}/file`);
+  if (revDl.status() !== 200 || !(await revDl.body()).equals(pdfBytes)) throw new Error("assigned reviewer cannot download: " + revDl.status());
+  const dlAudit = await pg.query(`select count(*)::int as n from "AuditLog" where action='evidence.download' and target=$1`, [evidenceId]);
+  if (dlAudit.rows[0].n !== 1) throw new Error("staff download not audited");
+  ok("assigned evaluator downloads the file, and it is audited");
 
   // A claimed case can be returned to the queue, then claimed again.
   await R.goto(BASE + "/review");
@@ -270,6 +303,11 @@ async function documentOutcomes(page, count, story) {
   const other = await M.request.get(BASE + `/api/portfolio/${pf[0].id}/pdf`);
   if (other.status() !== 404) throw new Error("another learner could reach the PDF: " + other.status());
   ok("another learner cannot export it");
+  const strangerDl = await M.request.get(BASE + `/api/evidence/${evidenceId}/file`);
+  if (strangerDl.status() !== 404) throw new Error("stranger downloaded evidence: " + strangerDl.status());
+  const anon = await (await browser.newContext()).request.get(BASE + `/api/evidence/${evidenceId}/file`);
+  if (anon.status() !== 401) throw new Error("anonymous download: " + anon.status());
+  ok("other learner and anonymous visitor cannot download it");
 
   // ── 5. Roles and invitations ──────────────────────────────────────
   section("Roles and invitations");

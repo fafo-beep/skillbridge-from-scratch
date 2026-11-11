@@ -93,7 +93,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       doc.moveDown(0.4);
       doc.font("Helvetica-Bold").text("Evidence");
       doc.font("Helvetica");
-      for (const e of evidence) doc.text(`• ${e.title} (${e.kind})`, { indent: 10 });
+      for (const e of evidence) {
+        const size = e.fileSize != null ? `, file on record, ${e.fileSize < 1024 * 1024 ? `${Math.max(1, Math.round(e.fileSize / 1024))} KB` : `${(e.fileSize / 1024 / 1024).toFixed(1)} MB`}` : ", described, no file";
+        doc.text(`• ${e.title} (${e.kind}${size})`, { indent: 10 });
+      }
     }
   }
 

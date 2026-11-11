@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { consumeToken, issueToken } from "@/lib/tokens";
 import { clientIp, rateLimit, retryMessage } from "@/lib/rate-limit";
 import { LEGAL } from "@/lib/legal";
+import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, deleteFile, extensionOf, headFile, isKeyFor } from "@/lib/storage";
 
 // Server actions. Every one re-checks the session server-side; nothing
 // trusts the client. Privileged writes land in AuditLog.
@@ -261,9 +262,76 @@ export async function addEvidence(portfolioId: string, outcomeId: string, formDa
   revalidatePath(`/portfolio/${portfolioId}`);
 }
 
+// Records an uploaded file as evidence. The browser has already put the
+// bytes in storage under a key this server scoped to the portfolio and
+// outcome; here the key is checked against that scope, the object is
+// confirmed to exist, and its size and type are taken from storage, not
+// from the client.
+export type AttachState = { error?: string };
+
+export async function attachUpload(
+  portfolioId: string,
+  outcomeId: string,
+  key: string,
+  originalName: string
+): Promise<AttachState> {
+  const userId = await requireUserId();
+  if (!isKeyFor(key, portfolioId, outcomeId)) return { error: "That file does not belong here." };
+  const ext = extensionOf(originalName) ?? extensionOf(key);
+  if (!ext) return { error: "That file type is not accepted." };
+  const stored = await headFile(key);
+  if (!stored) return { error: "The upload did not finish. Try again." };
+  if (stored.size > MAX_UPLOAD_BYTES || stored.size === 0) {
+    await deleteFile(key);
+    return { error: "Files must be between 1 byte and 25 MB." };
+  }
+  const fileType = ALLOWED_TYPES[ext];
+  const name = originalName.split(/[\\/]/).pop()?.slice(0, 200) || key.split("/").pop()!;
+  const done = await editableTx(async (tx) => {
+    const portfolio = await tx.portfolio.findFirst({
+      where: { id: portfolioId, userId, status: { in: ["DRAFT", "REVISIONS_REQUESTED"] } },
+      include: { course: { include: { outcomes: true } } },
+    });
+    if (!portfolio) throw new Error("not editable");
+    if (!portfolio.course.outcomes.some((o) => o.id === outcomeId)) throw new Error("bad outcome");
+    await tx.evidence.create({
+      data: {
+        portfolioId,
+        outcomeId,
+        title: name,
+        kind: KIND_BY_EXT[ext] ?? "Work sample",
+        fileKey: key,
+        fileName: name,
+        fileSize: stored.size,
+        fileType,
+      },
+    });
+    return true;
+  });
+  if (!done) {
+    await deleteFile(key);
+    return { error: "This portfolio can no longer be changed." };
+  }
+  await audit(userId, "evidence.upload", portfolioId, `${name} ${stored.size}B`);
+  revalidatePath(`/portfolio/${portfolioId}`);
+  return {};
+}
+
+const KIND_BY_EXT: Record<string, string> = {
+  pdf: "Document",
+  docx: "Document",
+  txt: "Document",
+  xlsx: "Spreadsheet",
+  csv: "Spreadsheet",
+  pptx: "Presentation",
+  png: "Image",
+  jpg: "Image",
+  jpeg: "Image",
+};
+
 export async function removeEvidence(evidenceId: string) {
   const userId = await requireUserId();
-  const portfolioId = await editableTx(async (tx) => {
+  const removed = await editableTx(async (tx) => {
     const evidence = await tx.evidence.findUnique({
       where: { id: evidenceId },
       include: { portfolio: true },
@@ -271,9 +339,12 @@ export async function removeEvidence(evidenceId: string) {
     if (!evidence || evidence.portfolio.userId !== userId) throw new Error("not owner");
     if (!EDITABLE.has(evidence.portfolio.status)) throw new Error("not editable");
     await tx.evidence.delete({ where: { id: evidenceId } });
-    return evidence.portfolioId;
+    return { portfolioId: evidence.portfolioId, fileKey: evidence.fileKey };
   });
-  if (portfolioId) revalidatePath(`/portfolio/${portfolioId}`);
+  if (removed) {
+    if (removed.fileKey) await deleteFile(removed.fileKey);
+    revalidatePath(`/portfolio/${removed.portfolioId}`);
+  }
 }
 
 async function requireVerified(userId: string) {

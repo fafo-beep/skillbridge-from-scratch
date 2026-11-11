@@ -265,6 +265,13 @@ model Evidence {
   title       String
   kind        String
   note        String    @default("")
+  // Set when a real file backs this evidence. The key names the object in
+  // storage (evidence/<portfolio>/<outcome>/<random>-<name>); the type is
+  // from the server's allowlist, never from the client.
+  fileKey     String?   @unique
+  fileName    String?
+  fileSize    Int?
+  fileType    String?
   createdAt   DateTime  @default(now())
 }
 

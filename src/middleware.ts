@@ -16,7 +16,8 @@ export function middleware(req: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    "connect-src 'self'",
+    // Evidence uploads go from the browser straight to the private Blob store.
+    "connect-src 'self' https://*.blob.vercel-storage.com https://blob.vercel-storage.com",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -44,7 +45,9 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except Next's own static assets and public files.
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|photos/|robots.txt|sitemap.xml).*)",
+    // Everything except Next's own static assets, public files, and the
+    // evidence routes, which set their own stricter headers (a sandbox
+    // policy on downloads) that must not be replaced by the page policy.
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|photos/|robots.txt|sitemap.xml|api/evidence/).*)",
   ],
 };

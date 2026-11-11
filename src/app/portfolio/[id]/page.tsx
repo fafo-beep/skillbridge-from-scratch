@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
+import { ACCEPT_ATTR, MAX_UPLOAD_BYTES, storageMode } from "@/lib/storage";
+import EvidenceUpload from "@/components/EvidenceUpload";
 import {
   addEvidence,
   decidePortfolio,
@@ -24,6 +26,12 @@ const STATUS_LINE: Record<string, string> = {
   APPROVED: "Approved: credit recommended",
   DENIED: "Not approved: see the evaluator's note",
 };
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
 
 const KINDS = ["Work sample", "Certification", "Performance review", "Report", "Spreadsheet", "Other"];
 
@@ -61,6 +69,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   if (!isOwner && !isReviewer) notFound();
 
   const editable = isOwner && EDITABLE.has(portfolio.status);
+  const uploads = storageMode();
   const byOutcome = new Map(portfolio.responses.map((r) => [r.outcomeId, r]));
   const evidenceByOutcome = new Map<string, typeof portfolio.evidence>();
   for (const e of portfolio.evidence) {
@@ -130,7 +139,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
           </p>
           <p className="mt-1 text-sm leading-relaxed">
             For each outcome, tell the story of when you did this work (at least{" "}
-            {MIN_NARRATIVE} characters), and list the files that prove it. Submit
+            {MIN_NARRATIVE} characters), and upload the files that prove it. Submit
             unlocks when every outcome is documented.
           </p>
         </div>
@@ -185,8 +194,16 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                         className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-sm odd:bg-background"
                       >
                         <span className="font-semibold">{e.title}</span>
-                        <span className="flex items-baseline gap-4">
-                          <span className="text-muted-foreground">{e.kind}</span>
+                        <span className="flex items-baseline gap-4" style={{ fontVariantNumeric: "tabular-nums" }}>
+                          <span className="text-muted-foreground">
+                            {e.kind}
+                            {e.fileSize != null ? ` · ${formatBytes(e.fileSize)}` : " · described, no file"}
+                          </span>
+                          {e.fileKey && (
+                            <a href={`/api/evidence/${e.id}/file`} className="font-semibold text-primary underline underline-offset-4">
+                              Download
+                            </a>
+                          )}
                           {editable && (
                             <form action={removeEvidence.bind(null, e.id)}>
                               <button className="font-semibold text-destructive underline underline-offset-4">
@@ -203,7 +220,26 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                     Nothing attached to this outcome yet.
                   </p>
                 )}
+                {editable && uploads !== "off" && (
+                  <EvidenceUpload
+                    portfolioId={portfolio.id}
+                    outcomeId={outcome.id}
+                    mode={uploads}
+                    accept={ACCEPT_ATTR}
+                    maxBytes={MAX_UPLOAD_BYTES}
+                    inputId={`evidence-file-${i}`}
+                  />
+                )}
+                {editable && uploads === "off" && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    File uploads are not switched on for this deployment yet. Name the documents you hold below.
+                  </p>
+                )}
                 {editable && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-primary underline underline-offset-4">
+                      Name a document you cannot upload
+                    </summary>
                   <form
                     action={addEvidence.bind(null, portfolio.id, outcome.id)}
                     className="mt-3 flex flex-wrap gap-2"
@@ -234,6 +270,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                       Add evidence
                     </button>
                   </form>
+                  </details>
                 )}
               </div>
             </section>
