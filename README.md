@@ -152,6 +152,16 @@ nothing and grants nothing. Every checkout and verification is audited.
 
 Free tier: one portfolio evaluated. Premium: unlimited.
 
+## Lessons are readings
+
+Every lesson is a short preparation guide in `src/content/guides`: what
+the outcome means at work, what an evaluator looks for, what counts as
+evidence, a worked example narrative, and a self-check. Each has its own
+page at `/courses/<slug>/lessons/<n>`. A lesson's minutes are computed
+from its word count, never typed in, and "Mark as Read" is the only
+progress there is. The catalog in `src/lib/catalog.ts` owns titles and
+order; the guides own what a lesson says.
+
 ## Evidence files (Vercel Blob)
 
 Learners upload the documents that prove each outcome. On Vercel, create

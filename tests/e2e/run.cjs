@@ -84,9 +84,19 @@ async function documentOutcomes(page, count, story) {
   await L.waitForURL("**/dashboard", { timeout: 30000 });
   await L.waitForSelector("text=Principles of Management");
   ok("enroll");
-  await L.locator('button:has-text("Mark done")').first().click();
+  // A lesson is a real reading with its own page; marking it read there
+  // shows on the dashboard.
+  await L.locator('a:has-text("What managers actually do")').first().click();
+  await L.waitForURL("**/courses/principles-of-management/lessons/1", { timeout: 30000 });
+  await L.waitForSelector('h2:has-text("What an evaluator looks for")');
+  await L.waitForSelector("text=A worked example");
+  await L.click('button:has-text("Mark as Read")');
+  await L.waitForSelector("text=Mark as Unread", { timeout: 20000 });
+  await L.click('a:has-text("Next: Setting goals that hold up")');
+  await L.waitForURL("**/lessons/2", { timeout: 30000 });
+  await L.goto(BASE + "/dashboard");
   await L.waitForSelector("text=1 of 8 lessons", { timeout: 20000 });
-  ok("lesson progress");
+  ok("lesson reading page, marked read, progress on dashboard");
   await L.click('button:has-text("Sign out")');
   await L.waitForURL(BASE + "/", { timeout: 30000 });
   await L.goto(BASE + "/dashboard");

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { resendVerification, toggleLesson } from "@/lib/actions";
 import PortfolioStatus from "@/components/PortfolioStatus";
+import { lessonPath } from "@/lib/catalog";
 
 export const metadata: Metadata = { title: "My Learning" };
 
@@ -202,7 +203,7 @@ export default async function DashboardPage({
                       style={{ fontVariantNumeric: "tabular-nums" }}
                     >
                       <span>
-                        {doneIds.size} of {lessons.length} lessons
+                        {doneIds.size} of {lessons.length} lessons read
                       </span>
                       <span>{pct}%</span>
                     </div>
@@ -220,26 +221,27 @@ export default async function DashboardPage({
                   </div>
 
                   <div className="mt-6 space-y-5">
-                    {e.course.modules.map((m) => (
+                    {e.course.modules.map((m, mi) => (
                       <div key={m.id}>
                         <p className="font-bold">{m.title}</p>
                         <ul className="mt-2">
-                          {m.lessons.map((l) => {
+                          {m.lessons.map((l, li) => {
                             const done = doneIds.has(l.id);
+                            const n = e.course.modules.slice(0, mi).reduce((s, x) => s + x.lessons.length, 0) + li + 1;
                             return (
                               <li
                                 key={l.id}
                                 className="flex items-center justify-between gap-4 px-3 py-2 text-sm odd:bg-background"
                                 style={{ fontVariantNumeric: "tabular-nums" }}
                               >
-                                <span className={done ? "text-muted-foreground line-through" : ""}>
+                                <Link href={lessonPath(e.course.slug, n)} className={`font-semibold hover:text-accent ${done ? "text-muted-foreground" : "text-primary"}`}>
                                   {l.title}
-                                </span>
+                                </Link>
                                 <span className="flex shrink-0 items-center gap-4">
-                                  <span className="text-muted-foreground">{l.minutes} min</span>
+                                  <span className="text-muted-foreground">{done ? "Read" : `${l.minutes} min`}</span>
                                   <form action={toggleLesson.bind(null, l.id)}>
                                     <button className="font-semibold text-primary hover:text-accent">
-                                      {done ? "Undo" : "Mark Done"}
+                                      {done ? "Mark as Unread" : "Mark as Read"}
                                     </button>
                                   </form>
                                 </span>

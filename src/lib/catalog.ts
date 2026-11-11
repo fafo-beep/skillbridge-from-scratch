@@ -1,7 +1,12 @@
 // Catalog data layer.
-// Today this is typed in-memory data so the whole product can be designed and
-// server-rendered. The shapes mirror db/schema.prisma one-for-one, so swapping
-// this module for Prisma queries changes no page code.
+// Typed in-memory content, server-rendered and seeded into the database by
+// prisma/seed.ts. The shapes mirror prisma/schema.prisma one-for-one.
+//
+// Every lesson is a reading (src/content/guides). A lesson's minutes are
+// computed from the length of its reading, never typed in, so the course
+// page can only ever promise time that the content actually takes.
+
+import { getGuide, readingMinutes } from "@/content/guides";
 
 export type Category = {
   slug: string;
@@ -288,6 +293,33 @@ export const COURSES: Course[] = [
     ],
   },
 ];
+
+// Replace planned minutes with the real reading time wherever a guide exists.
+for (const course of COURSES) {
+  for (const mod of course.modules) {
+    for (const lesson of mod.lessons) {
+      const guide = getGuide(course.slug, lesson.title);
+      if (guide) lesson.minutes = readingMinutes(guide);
+    }
+  }
+}
+
+export type FlatLesson = { n: number; module: Module; lesson: Lesson; moduleIndex: number; lessonIndex: number };
+
+// Lessons in reading order, numbered from 1 across the whole course.
+export function flatLessons(course: Course): FlatLesson[] {
+  const out: FlatLesson[] = [];
+  course.modules.forEach((module, moduleIndex) => {
+    module.lessons.forEach((lesson, lessonIndex) => {
+      out.push({ n: out.length + 1, module, lesson, moduleIndex, lessonIndex });
+    });
+  });
+  return out;
+}
+
+export function lessonPath(courseSlug: string, n: number): string {
+  return `/courses/${courseSlug}/lessons/${n}`;
+}
 
 export function getCourse(slug: string): Course | undefined {
   return COURSES.find((c) => c.slug === slug);

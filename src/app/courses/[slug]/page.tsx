@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { COURSES, courseMinutes, getCategory, getCourse } from "@/lib/catalog";
+import { COURSES, courseMinutes, flatLessons, getCategory, getCourse, lessonPath } from "@/lib/catalog";
 import { enroll, startPortfolio } from "@/lib/actions";
 
 export function generateStaticParams() {
@@ -32,7 +32,8 @@ export default async function CoursePage({
   if (!course) notFound();
   const category = getCategory(course.category);
   const minutes = courseMinutes(course);
-  const hours = Math.round(minutes / 6) / 10;
+  const flat = flatLessons(course);
+  const lessonCount = flat.length;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -69,7 +70,7 @@ export default async function CoursePage({
             <span>{course.credits} college credits</span>
             <span>{course.level}</span>
             <span>
-              {course.weeks} weeks · about {hours} hours
+              {lessonCount} readings · about {minutes} minutes
             </span>
             <span>{course.priceUSD === 0 ? "Included free" : `$${course.priceUSD}`}</span>
           </div>
@@ -115,16 +116,21 @@ export default async function CoursePage({
                     {m.summary}
                   </p>
                   <ul className="mt-4">
-                    {m.lessons.map((l) => (
-                      <li
-                        key={l.title}
-                        className="flex items-baseline justify-between gap-4 px-3 py-2.5 text-sm odd:bg-background"
-                        style={{ fontVariantNumeric: "tabular-nums" }}
-                      >
-                        <span>{l.title}</span>
-                        <span className="shrink-0 text-muted-foreground">{l.minutes} min</span>
-                      </li>
-                    ))}
+                    {m.lessons.map((l) => {
+                      const n = flat.find((f) => f.lesson === l)?.n ?? 1;
+                      return (
+                        <li
+                          key={l.title}
+                          className="flex items-baseline justify-between gap-4 px-3 py-2.5 text-sm odd:bg-background"
+                          style={{ fontVariantNumeric: "tabular-nums" }}
+                        >
+                          <Link href={lessonPath(course.slug, n)} className="font-semibold text-primary hover:text-accent">
+                            {l.title}
+                          </Link>
+                          <span className="shrink-0 text-muted-foreground">Reading · {l.minutes} min</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
@@ -172,8 +178,8 @@ export default async function CoursePage({
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Total time</dt>
-                <dd className="font-semibold">about {hours} hours</dd>
+                <dt className="text-muted-foreground">Reading time</dt>
+                <dd className="font-semibold">about {minutes} minutes</dd>
               </div>
             </dl>
           </div>

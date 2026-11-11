@@ -156,7 +156,7 @@ async function requireUserId(): Promise<string> {
   return id;
 }
 
-export async function enroll(courseSlug: string) {
+export async function enroll(courseSlug: string, returnTo?: unknown) {
   if (!dbConfigured) redirect("/join");
   const userId = await requireUserId();
   const course = await db.course.findUnique({ where: { slug: courseSlug } });
@@ -168,7 +168,10 @@ export async function enroll(courseSlug: string) {
   });
   await audit(userId, "enrollment.create", course.slug);
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  revalidatePath("/courses", "layout");
+  // Only a path inside this course may be returned to: never an outside URL.
+  const safeReturn = typeof returnTo === "string" && returnTo.startsWith(`/courses/${course.slug}/`) ? returnTo : "/dashboard";
+  redirect(safeReturn);
 }
 
 export async function startPortfolio(courseSlug: string) {
@@ -212,6 +215,7 @@ export async function toggleLesson(lessonId: string) {
     await db.progress.create({ data: { enrollmentId: enrollment.id, lessonId } });
   }
   revalidatePath("/dashboard");
+  revalidatePath("/courses", "layout");
 }
 
 // ── Portfolio builder (owner-only; ownership enforced by query) ──────────
