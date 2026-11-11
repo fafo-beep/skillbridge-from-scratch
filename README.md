@@ -2,7 +2,7 @@
 
 A course platform for working adults, rebuilt from scratch: learn what's new,
 get credit for what isn't. Every eligible course doubles as a Prior Learning
-Assessment (PLA) pathway — document real experience, attach evidence, and a
+Assessment (PLA) pathway: document real experience, attach evidence, and a
 faculty evaluator issues a credit recommendation a college can review.
 
 ## Why this architecture
@@ -12,17 +12,17 @@ lives on search traffic, so this build is **Next.js (App Router), server
 rendered**: every course has a real URL, metadata, schema.org `Course`
 JSON-LD, a sitemap, and robots rules from day one.
 
-- `src/app/` — pages: home, `/catalog` (search + category filter, all
+- `src/app/`: pages: home, `/catalog` (search + category filter, all
   server-side), `/courses/[slug]` (statically generated per course),
   `/dashboard` (sample data until auth lands)
-- `src/lib/catalog.ts` — the typed course content (source of truth; the
+- `src/lib/catalog.ts`: the typed course content (source of truth; the
   seed script loads it into the database)
-- `prisma/schema.prisma` — the data model (users, courses, enrollments,
+- `prisma/schema.prisma`: the data model (users, courses, enrollments,
   progress, portfolios, payments, audit log), live via Prisma + Postgres
-- `src/auth.ts`, `src/lib/actions.ts` — Auth.js (credentials + JWT) and
+- `src/auth.ts`, `src/lib/actions.ts`: Auth.js (credentials + JWT) and
   the server actions: register, sign in, enroll, lesson progress,
   portfolio creation. Every action re-checks the session server-side.
-- `scripts/design-lint.mjs` — the design gate, run in CI
+- `scripts/design-lint.mjs`: the design gate, run in CI
 
 ## Design language
 
