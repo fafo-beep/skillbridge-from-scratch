@@ -119,7 +119,7 @@ async function documentOutcomes(page, count, story) {
   await M.click('header button:has-text("Sign in")');
   await M.waitForSelector("text=Welcome back");
   if (await M.locator("#modal-first").count()) throw new Error("sign-in dialog shows name fields");
-  await M.click('[role=dialog] button:has-text("Create one free")');
+  await M.click('[role=dialog] button:has-text("Create a free account")');
   await M.waitForSelector("text=Create your SkillBridge account");
   await M.click('[role=dialog] button:has-text("Sign in")');
   await M.waitForSelector("text=Welcome back");
@@ -129,12 +129,30 @@ async function documentOutcomes(page, count, story) {
   await M.click('[role=dialog] button[type=submit]:has-text("Sign in")');
   await M.waitForURL("**/dashboard", { timeout: 30000 });
   ok("sign-in dialog -> dashboard");
+  await M.goto(BASE + "/");
+  await M.waitForSelector('header button:has-text("Sign out")');
+  if (await M.locator('header button:has-text("Sign in")').count()) throw new Error("header still offers Sign in while signed in");
+  ok("header shows Sign out, not Sign in, while signed in");
+
+  // An email with no account is told so, with the create-account dialog one click away.
+  const N = await (await ctx()).newPage();
+  await N.goto(BASE + "/");
+  await N.click('header button:has-text("Sign in")');
+  await N.fill("#modal-email", `nobody${stamp}@example.com`);
+  await N.fill("#modal-password", "whatever-password-1");
+  await N.click("[role=dialog] button[type=submit]");
+  await N.waitForSelector("text=No account exists for this email yet.");
+  await N.click('[role=alert] button:has-text("Create a free account")');
+  await N.waitForSelector("#modal-first");
+  ok("unknown email on sign-in -> offered create account");
   await M.goto(BASE + "/upgrade");
   await M.click('button:has-text("Upgrade for $99")');
   await M.waitForURL("**/dashboard?unverified=1", { timeout: 30000 });
   await M.waitForSelector("text=Confirm your email first.");
   ok("unverified account gated from paying");
   await M.goto(BASE);
+  await M.click('header button:has-text("Sign out")');
+  await M.waitForSelector('header button:has-text("Join free")');
   await M.click('button:has-text("Join free")');
   await M.fill("#modal-first", "Dup");
   await M.fill("#modal-last", "User");
@@ -148,6 +166,12 @@ async function documentOutcomes(page, count, story) {
   await M.keyboard.press("Escape");
   await M.waitForSelector("text=Welcome back", { state: "detached" });
   ok("escape closes");
+  // Back in as this learner: later checks use M as "another learner".
+  await M.click('header button:has-text("Sign in")');
+  await M.fill("#modal-email", modalEmail);
+  await M.fill("#modal-password", PASS);
+  await M.click('[role=dialog] button[type=submit]:has-text("Sign in")');
+  await M.waitForURL("**/dashboard", { timeout: 30000 });
 
   // ── 3. Portfolio loop: document, submit, evaluate, see result ─────
   section("Portfolio loop");
@@ -167,8 +191,8 @@ async function documentOutcomes(page, count, story) {
   // A real file: uploaded, listed with its size, downloadable by the owner.
   const pdfBytes = Buffer.from("%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
   await L.setInputFiles("#evidence-file-0", { name: "Performance review 2024.pdf", mimeType: "application/pdf", buffer: pdfBytes });
-  await L.locator('button:has-text("Upload")').first().click();
-  await L.waitForSelector("text=Performance review 2024.pdf", { timeout: 30000 });
+  await L.waitForSelector("text=Attached", { timeout: 30000 });
+  await L.waitForSelector("li >> text=Performance review 2024.pdf", { timeout: 30000 });
   await L.waitForSelector("text=Document · ");
   ok("file uploaded and listed as evidence");
   const { rows: ev } = await pg.query(
@@ -371,7 +395,7 @@ async function documentOutcomes(page, count, story) {
   const target = `limit${stamp}@example.com`;
   for (let i = 0; i < 10; i++) {
     await signIn(T, target, "wrong-password-xx");
-    await T.waitForSelector("text=Email or password is incorrect");
+    await T.waitForSelector("text=/No account exists for this email yet|Email or password is incorrect/");
   }
   await signIn(T, target, "wrong-password-xx");
   await T.waitForSelector("text=Too many attempts");

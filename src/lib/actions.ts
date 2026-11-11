@@ -22,7 +22,7 @@ async function audit(userId: string | null, action: string, target: string, deta
   }
 }
 
-export type FormState = { error?: string; email?: string; name?: string; firstName?: string; lastName?: string; notice?: string };
+export type FormState = { error?: string; email?: string; name?: string; firstName?: string; lastName?: string; notice?: string; noAccount?: boolean };
 
 // The origin used in emailed links. In production it must come from
 // configuration, never from request headers, so a forged Host header can
@@ -89,6 +89,10 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  // A request the provider would reject before its limiter runs (empty or
+  // absurd password) gets the generic answer here, so a cheap probe cannot
+  // reach the account lookup below without paying for a sign-in attempt.
+  if (!password || password.length > 200 || !EMAIL_RE.test(email)) return { error: "Email or password is incorrect.", email };
   // Rate limiting happens inside the credentials provider (src/auth.ts),
   // so the raw Auth.js callback URL is covered by the same budget.
   try {
@@ -99,9 +103,23 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
       throw err;
     }
     if (err instanceof RateLimited) return { error: retryMessage(err.wait), email };
-    return { error: "Email or password is incorrect.", email };
+    return { ...(await explainFailure(email)), email };
   }
   return {};
+}
+
+// After a failed sign-in, say whether the email has an account at all. The
+// create-account form already confirms existence (it must), so this adds
+// no new disclosure, but it sits behind the same per-IP limiter as that
+// check so nobody can sweep a list of addresses through it.
+async function explainFailure(email: string): Promise<FormState> {
+  const generic = { error: "Email or password is incorrect." };
+  if (!EMAIL_RE.test(email)) return generic;
+  if (await rateLimit("checkEmail", await clientIp())) return generic;
+  const user = await db.user.findUnique({ where: { email }, select: { passwordHash: true } });
+  if (!user) return { error: "No account exists for this email yet.", noAccount: true };
+  if (!user.passwordHash) return { error: "This email signs in with Google, Facebook or Apple. Use that button instead." };
+  return generic;
 }
 
 // Email-first step: tells the modal whether this email already has a

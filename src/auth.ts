@@ -11,6 +11,10 @@ import { clearRateLimit, ipFromHeaders, rateLimit } from "@/lib/rate-limit";
 // Thrown by the credentials provider when the guess budget is spent. It
 // reaches the sign-in form's server action as-is, and the raw Auth.js
 // callback URL as ?error=CredentialsSignin&code=rate_limited.
+// A real cost-12 hash that matches no password, compared against when the
+// email has no password account (see authorize).
+const DUMMY_HASH = bcrypt.hashSync("not-a-real-password-" + Math.random().toString(36).slice(2), 12);
+
 const EMAIL_SHAPE = /^[^\s@]{1,64}@[^\s@]{1,189}\.[^\s@]{2,}$/;
 
 export class RateLimited extends CredentialsSignin {
@@ -62,13 +66,16 @@ const providers = [
       const ip = ipFromHeaders(request.headers);
       const wait =
         (await rateLimit("login", `${email}|${ip}`)) ??
-        (await rateLimit("loginAccount", email));
+        (await rateLimit("loginAccount", email)) ??
+        (await rateLimit("loginIp", ip));
       if (wait) throw new RateLimited(wait);
       const user = await db.user.findUnique({ where: { email } });
-      // A social-only account has no password; it must sign in via its provider.
-      if (!user?.passwordHash) return null;
-      const ok = await bcrypt.compare(password, user.passwordHash);
-      if (!ok) return null;
+      // Every failed attempt costs one hash comparison, whether or not the
+      // account exists, so response time does not reveal which emails are
+      // registered. A social-only account has no password; it must sign in
+      // via its provider, and pays the same cost here.
+      const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+      if (!user?.passwordHash || !ok) return null;
       // The owner got in: only failures should count toward a lockout.
       await clearRateLimit("login", `${email}|${ip}`);
       await clearRateLimit("loginAccount", email);

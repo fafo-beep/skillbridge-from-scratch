@@ -136,7 +136,7 @@ DATABASE_URL=... npm run make-admin -- you@example.com
   which is how the tests read the links. A deployment with neither sends
   nothing and stores only a redacted record.
 - Rate limits (database-backed, so they hold on serverless): sign-in 10
-  per account+IP per 15 min, sign-up 5 per IP per hour, email checks 30
+  per account+IP per 15 min and 100 per IP across all accounts, sign-up 5 per IP per hour, email checks 30
   per IP per 15 min, reset requests 3 per hour.
 - Every server request error is recorded in `ErrorLog` and listed on
   `/admin`; `src/instrumentation.ts` is where a Sentry client plugs in.

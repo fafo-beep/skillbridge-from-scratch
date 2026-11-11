@@ -3,7 +3,9 @@ import { Source_Sans_3 } from "next/font/google";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { CATEGORIES, COURSES } from "@/lib/catalog";
-import { oauthProviders } from "@/auth";
+import { auth, oauthProviders } from "@/auth";
+import { db, dbConfigured } from "@/lib/db";
+import { logout } from "@/lib/actions";
 import AuthLauncher from "@/components/AuthLauncher";
 import ThemeToggle from "@/components/ThemeToggle";
 import Logo from "@/components/Logo";
@@ -35,7 +37,22 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-function Header() {
+// Who is signed in, for the header. The role decides where "home" is:
+// learners go to My learning, evaluators to their queue, admins to Admin.
+async function viewer() {
+  if (!dbConfigured) return null;
+  const session = await auth();
+  const id = session?.user?.id;
+  if (!id) return null;
+  const user = await db.user.findUnique({ where: { id }, select: { firstName: true, name: true, role: true } });
+  if (!user) return null;
+  const home = user.role === "ADMIN" ? "/admin" : user.role === "REVIEWER" ? "/review" : "/dashboard";
+  const label = user.role === "ADMIN" ? "Admin" : user.role === "REVIEWER" ? "Evaluations" : "My learning";
+  return { first: user.firstName || user.name?.split(" ")[0] || "Account", home, label };
+}
+
+async function Header() {
+  const me = await viewer();
   return (
     <header className="bg-card">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
@@ -68,10 +85,28 @@ function Header() {
           <Link href="/catalog" className="hidden hover:text-primary sm:inline">
             Catalog
           </Link>
-          <Link href="/dashboard" className="hidden hover:text-primary md:inline">
-            My learning
-          </Link>
-          <AuthLauncher providers={[...oauthProviders]} />
+          {me ? (
+            <>
+              <Link href={me.home} className="hover:text-primary">
+                {me.label}
+              </Link>
+              <span className="hidden text-muted-foreground md:inline" aria-label="Signed in as">
+                {me.first}
+              </span>
+              <form action={logout}>
+                <button type="submit" className="rounded-md bg-secondary px-4 py-2 font-semibold text-secondary-foreground hover:bg-muted active:translate-y-px">
+                  Sign out
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link href="/dashboard" className="hidden hover:text-primary md:inline">
+                My learning
+              </Link>
+              <AuthLauncher providers={[...oauthProviders]} />
+            </>
+          )}
           <ThemeToggle />
         </nav>
       </div>

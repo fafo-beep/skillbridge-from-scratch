@@ -74,15 +74,17 @@ function SocialList({ providers }: { providers: string[] }) {
 
 function ErrorNote({ state, onSwitch }: { state: FormState; onSwitch?: () => void }) {
   if (!state.error) return null;
-  const offerSwitch = onSwitch && /already exists/.test(state.error);
+  // The other dialog is one click away when the error says so: an email
+  // that already has an account (on create), or none at all (on sign in).
+  const offer = !onSwitch ? null : state.noAccount ? "Create a free account" : /already exists/.test(state.error) ? "Sign in instead" : null;
   return (
     <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
       {state.error}
-      {offerSwitch && (
+      {offer && (
         <>
           {" "}
           <button type="button" onClick={onSwitch} className="text-primary underline underline-offset-4">
-            Sign in instead
+            {offer}
           </button>
         </>
       )}
@@ -102,14 +104,14 @@ function SignInForm({ onSwitch }: { onSwitch: () => void }) {
       <p className="text-sm">
         <a href="/forgot" className="font-semibold text-primary underline underline-offset-4">Forgot your password?</a>
       </p>
-      <ErrorNote state={state} />
+      <ErrorNote state={state} onSwitch={onSwitch} />
       <button type="submit" disabled={pending} className={primaryBtn}>
         {pending ? "One moment" : "Sign in"}
       </button>
       <p className="pt-2 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
         <button type="button" onClick={onSwitch} className="font-semibold text-primary underline underline-offset-4">
-          Create one free
+          Create a free account
         </button>
       </p>
     </form>

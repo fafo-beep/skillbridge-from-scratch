@@ -39,6 +39,14 @@ export default function AuthForm({
       {state.error && (
         <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
           {state.error}
+          {state.noAccount && (
+            <>
+              {" "}
+              <a href="/join" className="text-primary underline underline-offset-4">
+                Create a free account
+              </a>
+            </>
+          )}
         </p>
       )}
       {mode === "join" && <ConsentNote />}

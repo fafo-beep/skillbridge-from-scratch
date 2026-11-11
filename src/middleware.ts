@@ -16,8 +16,10 @@ export function middleware(req: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    // Evidence uploads go from the browser straight to the private Blob store.
-    "connect-src 'self' https://*.blob.vercel-storage.com https://blob.vercel-storage.com",
+    // Evidence uploads go from the browser straight to Vercel Blob. The SDK
+    // sends the bytes to vercel.com/api/blob; the storage hosts are listed
+    // for the multipart path. Nothing else may be contacted from the page.
+    "connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com https://blob.vercel-storage.com",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
