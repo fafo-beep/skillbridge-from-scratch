@@ -10,6 +10,7 @@ import { consumeToken, issueToken } from "@/lib/tokens";
 import { clientIp, rateLimit, retryMessage } from "@/lib/rate-limit";
 import { LEGAL } from "@/lib/legal";
 import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, deleteFile, extensionOf, headFile, isKeyFor } from "@/lib/storage";
+import { newVerifyCode } from "@/lib/credential";
 
 // Server actions. Every one re-checks the session server-side; nothing
 // trusts the client. Privileged writes land in AuditLog.
@@ -457,7 +458,14 @@ export async function decidePortfolio(portfolioId: string, formData: FormData) {
   if (!status || !Number.isInteger(score) || !note) return;
   const updated = await db.portfolio.updateMany({
     where: { id: portfolioId, status: "UNDER_REVIEW", evaluatorId: reviewerId, userId: { not: reviewerId } },
-    data: { status, score, decisionNote: note, decidedAt: new Date() },
+    data: {
+      status,
+      score,
+      decisionNote: note,
+      decidedAt: new Date(),
+      // An approved recommendation gets a code a registrar can look up.
+      verifyCode: status === "APPROVED" ? newVerifyCode() : null,
+    },
   });
   if (updated.count > 0) {
     await audit(reviewerId, "review.decide", portfolioId, `${status} score=${score}`);

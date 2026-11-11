@@ -12,6 +12,7 @@ type Props = {
   decidedAt?: Date | null;
   credits?: number;
   score?: number | null;
+  verifyCode?: string | null;
   compact?: boolean;
 };
 
@@ -122,7 +123,7 @@ function next(status: Status): string {
   }
 }
 
-export default function PortfolioStatus({ status, submittedAt, decidedAt, credits, score, compact = false }: Props) {
+export default function PortfolioStatus({ status, submittedAt, decidedAt, credits, score, verifyCode, compact = false }: Props) {
   const when =
     status === "APPROVED" || status === "DENIED" || status === "REVISIONS_REQUESTED"
       ? decidedAt && `Decided ${DATE.format(decidedAt)}`
@@ -167,6 +168,11 @@ export default function PortfolioStatus({ status, submittedAt, decidedAt, credit
       </div>
       <Track status={status} />
       <p className="mt-6 max-w-prose leading-relaxed text-muted-foreground">{next(status)}</p>
+      {status === "APPROVED" && verifyCode && (
+        <p className="mt-4 text-sm text-muted-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
+          Verification code <span className="font-semibold text-foreground">{verifyCode}</span>. A registrar can confirm it at /credential.
+        </p>
+      )}
     </section>
   );
 }

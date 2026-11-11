@@ -17,6 +17,8 @@ export const LIMITS = {
   checkEmail: { limit: 30, windowSec: 15 * 60 },
   reset: { limit: 3, windowSec: 60 * 60 },
   verifyResend: { limit: 3, windowSec: 60 * 60 },
+  // Public credential lookups, per IP: generous for a registrar, useless for guessing.
+  credential: { limit: 60, windowSec: 15 * 60 },
 } as const satisfies Record<string, Limit>;
 
 export function ipFromHeaders(h: Headers): string {

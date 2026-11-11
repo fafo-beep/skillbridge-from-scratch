@@ -237,6 +237,9 @@ model Portfolio {
   evaluatorId  String?
   submittedAt  DateTime?
   decidedAt    DateTime?
+  // Printed on the PDF of an approved recommendation; anyone holding the
+  // document can confirm it at /credential/<code>. Random, unguessable.
+  verifyCode   String?           @unique
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   responses    OutcomeResponse[]

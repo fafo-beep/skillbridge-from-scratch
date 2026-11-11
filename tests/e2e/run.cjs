@@ -329,6 +329,32 @@ async function documentOutcomes(page, count, story) {
   }
   ok(`approved portfolio exported as PDF (${pdfBody.length} bytes)`);
 
+  // The PDF carries a verification code; anyone holding it can confirm the
+  // recommendation without signing in, and a wrong code confirms nothing.
+  const { rows: vc } = await pg.query(`select "verifyCode" from "Portfolio" where id=$1`, [pf[0].id]);
+  const verifyCode = vc[0].verifyCode;
+  if (!/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(verifyCode ?? "")) throw new Error("no verification code: " + verifyCode);
+  // pdfkit deflates its content streams; inflate them before searching.
+  const zlib = require("zlib");
+  let pdfText = "";
+  const pdfRaw = pdfBody.toString("latin1");
+  const re = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let m;
+  while ((m = re.exec(pdfRaw))) {
+    try { pdfText += zlib.inflateSync(Buffer.from(m[1], "latin1")).toString("latin1"); } catch { pdfText += m[1]; }
+  }
+  // Text is drawn as hex strings inside TJ arrays; decode every hex run.
+  const flat = Array.from(pdfText.matchAll(/<([0-9a-fA-F]+)>/g), (h) => Buffer.from(h[1], "hex").toString("latin1")).join("");
+  if (!flat.includes(verifyCode)) throw new Error("verification code not printed in the PDF");
+  const anonCtx = await browser.newContext();
+  const vr = await anonCtx.request.get(BASE + `/credential/${verifyCode.toLowerCase()}`);
+  const vhtml = await vr.text();
+  if (vr.status() !== 200 || !vhtml.includes("Genuine") || !vhtml.includes("BUS110") || !vhtml.includes("3 credits")) throw new Error("credential page wrong: " + vr.status());
+  const bad = await anonCtx.request.get(BASE + "/credential/ABCD-EFGH-JKMN-PQRS");
+  if (!(await bad.text()).includes("No recommendation matches")) throw new Error("wrong code was not rejected");
+  await anonCtx.close();
+  ok("verification code printed on the PDF and confirmed on the public page");
+
   const refund = JSON.stringify({ id: `evt_refund_${stamp}`, object: "event", type: "charge.refunded",
     data: { object: { id: `ch_${stamp}`, object: "charge", payment_intent: `pi_${stamp}`, refunded: true } } });
   r = await fetch(url, signed(refund));

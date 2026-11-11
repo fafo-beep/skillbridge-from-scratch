@@ -102,6 +102,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
         decidedAt={portfolio.decidedAt}
         credits={portfolio.course.credits}
         score={portfolio.score}
+        verifyCode={portfolio.verifyCode}
       />
       {decided && (isOwner ? viewer?.premium : true) && (
         <p className="mt-4">

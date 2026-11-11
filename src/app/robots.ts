@@ -6,7 +6,7 @@ const BASE =
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/dashboard", "/portfolio", "/review", "/admin", "/invite", "/upgrade", "/verify", "/reset", "/forgot"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/dashboard", "/portfolio", "/review", "/admin", "/invite", "/upgrade", "/verify", "/reset", "/forgot", "/credential/"] },
     sitemap: `${BASE}/sitemap.xml`,
   };
 }

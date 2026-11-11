@@ -152,6 +152,16 @@ nothing and grants nothing. Every checkout and verification is audited.
 
 Free tier: one portfolio evaluated. Premium: unlimited.
 
+## Verifying a recommendation
+
+Every approved recommendation carries a sixteen-character verification
+code (an alphabet without look-alike characters, about 80 bits), issued
+at approval and printed on the PDF's first page and footer. Anyone
+holding the document can confirm it at `/credential/<code>` without
+signing in; the page shows only what the document already states
+(learner, course, credits, score, evaluator, date). Lookups are rate
+limited per IP and the pages are excluded from search indexing.
+
 ## Lessons are readings
 
 Every lesson is a short preparation guide in `src/content/guides`: what
@@ -177,5 +187,5 @@ in a folder and the same code path runs against it.
 
 ## Roadmap
 
-1. Lesson content pages and video via Mux/Cloudflare Stream
-2. Signed PDFs with a public verification code for registrars
+1. Two-factor sign-in for evaluators and admins
+2. Account deletion and data export

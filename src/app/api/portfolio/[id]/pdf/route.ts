@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
+import { newVerifyCode } from "@/lib/credential";
+import { siteOrigin } from "@/lib/site";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +53,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!isOwner && !isStaff) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (isOwner && !viewer?.premium) return NextResponse.json({ error: "full plan required" }, { status: 402 });
 
+  // Approved recommendations issued before codes existed get one now.
+  let verifyCode = portfolio.verifyCode;
+  if (portfolio.status === "APPROVED" && !verifyCode) {
+    verifyCode = newVerifyCode();
+    await db.portfolio.updateMany({ where: { id: portfolio.id, verifyCode: null }, data: { verifyCode } });
+    verifyCode = (await db.portfolio.findUnique({ where: { id: portfolio.id }, select: { verifyCode: true } }))?.verifyCode ?? verifyCode;
+  }
+  const origin = siteOrigin();
+
   const evaluator = portfolio.evaluatorId
     ? await db.user.findUnique({ where: { id: portfolio.evaluatorId }, select: { name: true } })
     : null;
@@ -76,6 +87,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (portfolio.decidedAt) {
     doc.font("Helvetica-Bold").text("Decided: ", { continued: true }).font("Helvetica")
       .text(`${portfolio.decidedAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}${evaluator ? ` by ${evaluator.name}` : ""}${portfolio.score != null ? ` · score ${portfolio.score}/5` : ""}`);
+  }
+  if (verifyCode) {
+    doc.moveDown(0.6);
+    doc.font("Helvetica-Bold").fillColor(blue).text("Verification code: ", { continued: true }).font("Helvetica").fillColor(ink).text(verifyCode);
+    doc.font("Helvetica").fillColor(muted).fontSize(10).text(`Confirm this recommendation at ${origin}/credential/${verifyCode}`);
+    doc.fontSize(11);
   }
   if (portfolio.decisionNote) {
     doc.moveDown(0.6);
@@ -103,7 +120,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   doc.moveDown(1.5);
   doc.fillColor(muted).fontSize(9).font("Helvetica")
     .text("SkillBridge does not award college credit; only institutions do. This document records a faculty evaluator's recommendation against the stated course outcomes, prepared for review under the receiving college's Prior Learning Assessment policy.", { width: 480 });
-  doc.text(`Portfolio ${portfolio.id} · generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`);
+  doc.text(`Portfolio ${portfolio.id} · generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}${verifyCode ? ` · verify at ${origin}/credential/${verifyCode}` : ""}`);
   doc.end();
 
   const pdf = await done;
