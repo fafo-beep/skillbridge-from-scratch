@@ -18,6 +18,23 @@ const INCLUDED = [
   "Priority support",
 ];
 
+function Check({ className = "" }: { className?: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`mt-1 shrink-0 ${className}`}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+function Feature({ text, tone }: { text: string; tone: "card" | "primary" }) {
+  return (
+    <li className="flex items-start gap-3">
+      <Check className={tone === "primary" ? "text-primary-foreground" : "text-primary"} />
+      <span>{text}</span>
+    </li>
+  );
+}
+
 export default async function UpgradePage({
   searchParams,
 }: {
@@ -47,29 +64,31 @@ export default async function UpgradePage({
         <div className="rounded-lg bg-card p-8">
           <p className="text-xl font-bold">Free</p>
           <p className="mt-4 text-5xl font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>$0</p>
-          <ul className="mt-6 space-y-2.5 leading-relaxed">
-            <li>Browse every course and pathway</li>
-            <li>Build portfolios and track progress</li>
-            <li>One portfolio evaluated by faculty</li>
+          <p className="mt-1 text-muted-foreground">for as long as you like</p>
+          <ul className="mt-6 space-y-3 leading-relaxed">
+            {["Browse every course and reading", "Build portfolios and track progress", "One portfolio evaluated by faculty"].map((t) => (
+              <Feature key={t} text={t} tone="card" />
+            ))}
           </ul>
+          {!user.premium && <p className="mt-8 text-sm font-semibold text-muted-foreground">Your current plan</p>}
         </div>
         <div className="rounded-lg bg-primary p-8 text-primary-foreground">
-          <p className="text-xl font-bold">Full portfolio</p>
+          <p className="text-xl font-bold">Full Plan</p>
           <p className="mt-4 text-5xl font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
             ${PREMIUM_PRICE_USD}
           </p>
           <p className="mt-1">once, not monthly</p>
-          <ul className="mt-6 space-y-2.5 leading-relaxed">
+          <ul className="mt-6 space-y-3 leading-relaxed">
             {INCLUDED.map((i) => (
-              <li key={i}>{i}</li>
+              <Feature key={i} text={i} tone="primary" />
             ))}
           </ul>
           <div className="mt-8">
             {user.premium ? (
-              <p className="font-bold">You&apos;re on the full plan.</p>
+              <p className="flex items-center gap-2 font-bold"><Check /> You&apos;re on the full plan.</p>
             ) : stripeConfigured ? (
               <form action={startCheckout}>
-                <button className="rounded-md bg-background px-6 py-3 font-semibold text-primary hover:bg-secondary active:translate-y-px">
+                <button className="w-full rounded-md bg-background px-6 py-3.5 text-base font-semibold text-primary hover:bg-secondary active:translate-y-px sm:w-auto">
                   Upgrade for ${PREMIUM_PRICE_USD}
                 </button>
               </form>
