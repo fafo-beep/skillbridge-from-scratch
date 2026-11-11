@@ -215,6 +215,17 @@ async function documentOutcomes(page, count, story) {
   await L.click('button:has-text("Submit portfolio")');
   await L.waitForSelector("text=Submitted — waiting for an evaluator", { timeout: 30000 });
   ok("submission allowed after verified payment");
+  const { rows: pf } = await pg.query(`select p.id from "Portfolio" p join "Course" c on c.id=p."courseId" where p."userId"=$1 and c.code='BUS110'`, [userId]);
+  const pdfRes = await L.request.get(BASE + `/api/portfolio/${pf[0].id}/pdf`);
+  const pdfBody = await pdfRes.body();
+  if (pdfRes.status() !== 200 || !pdfRes.headers()["content-type"].includes("application/pdf") || pdfBody.slice(0, 4).toString() !== "%PDF") {
+    throw new Error(`pdf export failed: ${pdfRes.status()} ${pdfRes.headers()["content-type"]}`);
+  }
+  ok(`approved portfolio exported as PDF (${pdfBody.length} bytes)`);
+  if (process.env.PDF_OUT) require("fs").writeFileSync(process.env.PDF_OUT, pdfBody);
+  const other = await M.request.get(BASE + `/api/portfolio/${pf[0].id}/pdf`);
+  if (other.status() !== 404) throw new Error("another learner could reach the PDF: " + other.status());
+  ok("another learner cannot export it");
 
   // ── 5. Roles and invitations ──────────────────────────────────────
   section("Roles and invitations");

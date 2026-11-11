@@ -46,6 +46,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
 
   const viewer = await db.user.findUnique({ where: { id: viewerId } });
   const isOwner = portfolio.userId === viewerId;
+  const decided = ["APPROVED", "DENIED", "REVISIONS_REQUESTED"].includes(portfolio.status);
   const hasReviewerRole = viewer?.role === "REVIEWER" || viewer?.role === "ADMIN";
   // A reviewer sees only what the role needs: the open queue (SUBMITTED)
   // and their own claimed or decided reviews — never drafts, revisions in
@@ -84,6 +85,23 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
       <p className="mt-3 text-lg font-semibold text-secondary-foreground">
         {STATUS_LINE[portfolio.status] ?? portfolio.status}
       </p>
+      {decided && (isOwner ? viewer?.premium : true) && (
+        <p className="mt-3">
+          <a
+            href={`/api/portfolio/${portfolio.id}/pdf`}
+            className="inline-block rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
+          >
+            Download as PDF
+          </a>
+        </p>
+      )}
+      {decided && isOwner && !viewer?.premium && (
+        <p className="mt-3 text-sm">
+          <Link href="/upgrade" className="font-semibold text-primary underline underline-offset-4">
+            The full plan includes this portfolio as a PDF to take to your college
+          </Link>
+        </p>
+      )}
 
       {(portfolio.status === "APPROVED" ||
         portfolio.status === "DENIED" ||

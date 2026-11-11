@@ -12,7 +12,7 @@ const INCLUDED = [
   "Unlimited credit portfolios and faculty evaluations",
   "Every course pathway, every field",
   "Evaluator notes and scores on each decision",
-  "PDF export of a decided portfolio (coming next)",
+  "Every decided portfolio as a PDF to take to your college",
   "Priority support",
 ];
 
