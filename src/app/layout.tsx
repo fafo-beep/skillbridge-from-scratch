@@ -13,7 +13,12 @@ const sourceSans = Source_Sans_3({
   variable: "--font-sans",
 });
 
+const SITE =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE),
   title: {
     default: "SkillBridge — Courses and credit for what you already know",
     template: "%s · SkillBridge",
@@ -23,7 +28,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "SkillBridge",
+    images: [{ url: "/photos/og.jpg", width: 1200, height: 630, alt: "SkillBridge" }],
   },
+  twitter: { card: "summary_large_image" },
 };
 
 function Header() {

@@ -98,12 +98,15 @@ export default function HomePage() {
               </p>
             </div>
           </div>
-          <div>
-            <DecisionFragment />
-            <p className="mt-3 text-sm text-muted-foreground">
-              Where every pathway can end: credit your college can review.
-            </p>
-          </div>
+          <Image
+            src={PHOTOS.hero.src}
+            alt={PHOTOS.hero.alt}
+            width={PHOTOS.hero.width}
+            height={PHOTOS.hero.height}
+            sizes="(min-width: 1024px) 45vw, 100vw"
+            className="w-full rounded-lg object-cover"
+            priority
+          />
         </div>
       </section>
 
@@ -189,7 +192,7 @@ export default function HomePage() {
         <h2 data-reveal className="max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
           One place for the course and the credit
         </h2>
-        <div className="mt-10 grid items-start gap-5 lg:grid-cols-3">
+        <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
           <div data-reveal>
             <PlayerFragment />
             <p className="mt-3 text-sm text-muted-foreground">
@@ -206,6 +209,12 @@ export default function HomePage() {
             <EvidenceFragment />
             <p className="mt-3 text-sm text-muted-foreground">
               Proof you already have, filed where evaluators look.
+            </p>
+          </div>
+          <div data-reveal>
+            <DecisionFragment />
+            <p className="mt-3 text-sm text-muted-foreground">
+              The credit recommendation, ready for your college.
             </p>
           </div>
         </div>
