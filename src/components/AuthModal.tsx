@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { checkEmail, login, register, socialSignIn, type CheckState } from "@/lib/actions";
 import { NameFields, PasswordField } from "@/components/AuthFields";
+import ConsentNote from "@/components/ConsentNote";
 
 // Coursera-style auth dialog: one entry point for both log in and sign up.
 // Email first; the next step shows only what that email needs (password for
@@ -58,6 +59,7 @@ function SocialList({ providers }: { providers: string[] }) {
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
       </div>
       <div className="space-y-3">
+        <ConsentNote action="continuing with a provider" />
         {providers.map((p) => (
           <form key={p} action={socialSignIn.bind(null, p)}>
             <button
@@ -162,6 +164,7 @@ function PasswordStep({
           {state.error}
         </p>
       )}
+      {mode === "register" && <ConsentNote />}
       <button type="submit" disabled={pending} className={primaryBtn}>
         {pending ? "One moment…" : mode === "register" ? "Create free account" : "Sign in"}
       </button>

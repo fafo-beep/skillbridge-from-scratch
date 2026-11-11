@@ -5,6 +5,7 @@ import Facebook from "next-auth/providers/facebook";
 import Apple from "next-auth/providers/apple";
 import bcrypt from "bcryptjs";
 import { db, dbConfigured } from "@/lib/db";
+import { LEGAL } from "@/lib/legal";
 
 // Auth.js v5. Email+password always; Google/Facebook/Apple appear
 // automatically when their AUTH_<PROVIDER>_ID/SECRET env vars are set.
@@ -133,6 +134,8 @@ async function resolveOAuthUser(opts: {
       lastName: rest.join(" ") || null,
       passwordHash: null,
       emailVerifiedAt: emailVerified ? new Date() : null,
+      termsAcceptedAt: new Date(),
+      termsVersion: LEGAL.version,
       oauthAccounts: { create: { provider, providerAccountId, emailVerified } },
     },
   });

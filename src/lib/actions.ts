@@ -8,6 +8,7 @@ import { db, dbConfigured } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { consumeToken, issueToken } from "@/lib/tokens";
 import { clientIp, rateLimit, retryMessage } from "@/lib/rate-limit";
+import { LEGAL } from "@/lib/legal";
 
 // Server actions. Every one re-checks the session server-side; nothing
 // trusts the client. Privileged writes land in AuditLog.
@@ -73,8 +74,10 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   if (existing) return { error: "An account with that email already exists. Sign in instead.", ...echo };
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await db.user.create({ data: { name, firstName, lastName, email, passwordHash } });
-  await audit(user.id, "user.register", user.id);
+  const user = await db.user.create({
+    data: { name, firstName, lastName, email, passwordHash, termsAcceptedAt: new Date(), termsVersion: LEGAL.version },
+  });
+  await audit(user.id, "user.register", user.id, `terms ${LEGAL.version}`);
   await sendVerification(user.id, email, firstName);
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
@@ -504,7 +507,7 @@ export async function acceptInvite(token: string, _prev: FormState, formData: Fo
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await db.$transaction(async (tx) => {
     const u = await tx.user.create({
-      data: { name, firstName, lastName, email: invite.email, passwordHash, role: invite.role, emailVerifiedAt: new Date() },
+      data: { name, firstName, lastName, email: invite.email, passwordHash, role: invite.role, emailVerifiedAt: new Date(), termsAcceptedAt: new Date(), termsVersion: LEGAL.version },
     });
     await tx.invite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
     return u;

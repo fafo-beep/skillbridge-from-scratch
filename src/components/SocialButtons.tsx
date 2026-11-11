@@ -1,4 +1,5 @@
 import { oauthProviders, signIn } from "@/auth";
+import ConsentNote from "@/components/ConsentNote";
 
 // Social sign-in buttons. Each renders only when its provider's
 // credentials are configured, so the page never shows a dead button.
@@ -40,6 +41,7 @@ export default function SocialButtons() {
   if (oauthProviders.length === 0) return null;
   return (
     <div className="space-y-3">
+      <ConsentNote action="continuing with a provider" />
       {oauthProviders.map((p) => (
         <form
           key={p}

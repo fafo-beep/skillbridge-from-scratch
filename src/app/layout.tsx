@@ -121,8 +121,13 @@ function Footer() {
         </p>
         <div className="mt-8 flex flex-wrap items-baseline justify-between gap-3 text-sm">
           <p>Courses, and credit for what you already know.</p>
-          <p>Only colleges award credit — check your school&apos;s PLA policy.</p>
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link href="/terms" className="hover:underline">Terms</Link>
+            <Link href="/acceptable-use" className="hover:underline">Acceptable Use</Link>
+            <Link href="/privacy" className="hover:underline">Privacy</Link>
+          </nav>
         </div>
+        <p className="mt-4 text-sm">Only colleges award credit — check your school&apos;s PLA policy.</p>
       </div>
     </footer>
   );

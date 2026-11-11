@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
 import { NameFields, PasswordField } from "@/components/AuthFields";
+import ConsentNote from "@/components/ConsentNote";
 
 const field =
   "h-11 w-full rounded-md border border-border bg-background px-4 text-base placeholder:text-muted-foreground";
@@ -40,6 +41,7 @@ export default function AuthForm({
           {state.error}
         </p>
       )}
+      {mode === "join" && <ConsentNote />}
       <button
         type="submit"
         disabled={pending}

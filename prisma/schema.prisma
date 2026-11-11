@@ -46,6 +46,9 @@ model User {
   // Bumped on password reset and squatter cleanup; a JWT carrying an
   // older version is rejected, so every other session ends.
   sessionVersion Int @default(0)
+  // Consent record: when and which version of the Terms was accepted
+  termsAcceptedAt DateTime?
+  termsVersion    String?
   tokens       SecurityToken[]
   role         Role         @default(LEARNER)
   premium      Boolean      @default(false)
