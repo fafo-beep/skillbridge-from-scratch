@@ -37,7 +37,7 @@ export default function InviteForm() {
       )}
       {state.link && (
         <div className="rounded-md bg-secondary p-4 text-sm text-secondary-foreground">
-          <p className="font-semibold">Invitation for {state.email} — valid 7 days. Send this link:</p>
+          <p className="font-semibold">Invitation for {state.email}, valid 7 days. Send this link:</p>
           <p className="mt-2 break-all rounded-md bg-background px-3 py-2 font-semibold text-foreground select-all">{state.link}</p>
         </div>
       )}

@@ -49,11 +49,11 @@ export default async function ReviewDashboardPage() {
   const scored = done.filter((p) => p.score != null);
   const avgScore = scored.length
     ? (scored.reduce((s, p) => s + (p.score ?? 0), 0) / scored.length).toFixed(1)
-    : "–";
+    : "n/a";
   const credits = done.filter((p) => p.status === "APPROVED").reduce((s, p) => s + p.course.credits, 0);
   const turnaround = done.length
     ? (done.reduce((s, p) => s + days(p.createdAt, p.decidedAt ?? p.updatedAt), 0) / done.length).toFixed(1)
-    : "–";
+    : "n/a";
 
   const stats: Array<[string, string]> = [
     [String(queue.length), "waiting"],

@@ -1,17 +1,17 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { checkEmail, login, register, socialSignIn, type CheckState } from "@/lib/actions";
-import { NameFields, PasswordField } from "@/components/AuthFields";
+import { login, register, socialSignIn, type FormState } from "@/lib/actions";
+import { NameFields, PasswordField, field } from "@/components/AuthFields";
 import ConsentNote from "@/components/ConsentNote";
+import { LogoMark } from "@/components/Logo";
 
-// Coursera-style auth dialog: one entry point for both log in and sign up.
-// Email first; the next step shows only what that email needs (password for
-// an existing account, name + password for a new one, the provider button
-// for a social-only account). A real overlay, so it may float (shadow ok).
+// Two dialogs, one component: "signin" and "join" are separate
+// experiences that link to each other. Centered, logo on top, the way
+// people expect. A real overlay, so it may float.
 
-const field =
-  "h-12 w-full rounded-md border border-border bg-background px-4 text-base placeholder:text-muted-foreground";
+export type AuthMode = "signin" | "join";
+
 const primaryBtn =
   "h-12 w-full rounded-md bg-primary text-base font-semibold text-primary-foreground hover:bg-accent active:translate-y-px disabled:opacity-60";
 
@@ -19,7 +19,6 @@ function BrandMark({ provider }: { provider: string }) {
   if (provider === "google") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-        {/* Google brand colors; design-lint-ignore */}
         <path fill="#4285F4" /* Google brand; design-lint-ignore */ d="M21.6 12.2c0-.7-.06-1.4-.18-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4Z" />
         <path fill="#34A853" /* Google brand; design-lint-ignore */ d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z" />
         <path fill="#FBBC05" /* Google brand; design-lint-ignore */ d="M6.4 14a6 6 0 0 1 0-3.8V7.6H3.1a10 10 0 0 0 0 8.9L6.4 14Z" />
@@ -30,7 +29,6 @@ function BrandMark({ provider }: { provider: string }) {
   if (provider === "facebook") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-        {/* Facebook brand color; design-lint-ignore */}
         <path fill="#1877F2" /* Facebook brand; design-lint-ignore */ d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z" />
       </svg>
     );
@@ -59,7 +57,6 @@ function SocialList({ providers }: { providers: string[] }) {
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
       </div>
       <div className="space-y-3">
-        <ConsentNote action="continuing with a provider" />
         {providers.map((p) => (
           <form key={p} action={socialSignIn.bind(null, p)}>
             <button
@@ -75,99 +72,71 @@ function SocialList({ providers }: { providers: string[] }) {
   );
 }
 
-function EmailStep({
-  onKnown,
-}: {
-  onKnown: (email: string, exists: boolean, social: boolean) => void;
-}) {
-  const [state, formAction, pending] = useActionState(
-    async (prev: CheckState, fd: FormData): Promise<CheckState> => {
-      const res = await checkEmail(prev, fd);
-      if (!res.error && res.email) onKnown(res.email, !!res.exists, !!res.social);
-      return res;
-    },
-    {} as CheckState
+function ErrorNote({ state, onSwitch }: { state: FormState; onSwitch?: () => void }) {
+  if (!state.error) return null;
+  const offerSwitch = onSwitch && /already exists/.test(state.error);
+  return (
+    <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
+      {state.error}
+      {offerSwitch && (
+        <>
+          {" "}
+          <button type="button" onClick={onSwitch} className="text-primary underline underline-offset-4">
+            Sign in instead
+          </button>
+        </>
+      )}
+    </p>
   );
+}
+
+function SignInForm({ onSwitch }: { onSwitch: () => void }) {
+  const [state, formAction, pending] = useActionState(login, {} as FormState);
   return (
     <form action={formAction} className="auth-step space-y-4">
       <div>
-        <label htmlFor="modal-email" className="mb-1.5 block text-sm font-semibold">
-          Email
-        </label>
-        <input
-          id="modal-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="name@email.com"
-          required
-          autoFocus
-          defaultValue={state.email}
-          className={field}
-        />
+        <label htmlFor="modal-email" className="mb-1.5 block text-sm font-semibold">Email</label>
+        <input id="modal-email" name="email" type="email" autoComplete="email" required autoFocus defaultValue={state.email} className={field} />
       </div>
-      {state.error && (
-        <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
-          {state.error}
-        </p>
-      )}
+      <PasswordField id="modal-password" mode="current" />
+      <p className="text-sm">
+        <a href="/forgot" className="font-semibold text-primary underline underline-offset-4">Forgot your password?</a>
+      </p>
+      <ErrorNote state={state} />
       <button type="submit" disabled={pending} className={primaryBtn}>
-        {pending ? "One moment…" : "Continue"}
+        {pending ? "One moment" : "Sign in"}
       </button>
+      <p className="pt-2 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <button type="button" onClick={onSwitch} className="font-semibold text-primary underline underline-offset-4">
+          Create one free
+        </button>
+      </p>
     </form>
   );
 }
 
-function PasswordStep({
-  email,
-  mode,
-  onBack,
-}: {
-  email: string;
-  mode: "login" | "register";
-  onBack: () => void;
-}) {
-  const action = mode === "login" ? login : register;
-  const [state, formAction, pending] = useActionState(action, {});
+function JoinForm({ onSwitch }: { onSwitch: () => void }) {
+  const [state, formAction, pending] = useActionState(register, {} as FormState);
   return (
     <form action={formAction} className="auth-step space-y-4">
+      <NameFields idPrefix="modal" firstName={state.firstName} lastName={state.lastName} autoFocus />
       <div>
-        <h3 className="text-xl font-bold">
-          {mode === "login" ? "Welcome back" : "Create your account"}
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {mode === "login"
-            ? "Enter your password to pick up where you left off."
-            : "No account yet for this email — this takes a moment."}
-        </p>
+        <label htmlFor="modal-email" className="mb-1.5 block text-sm font-semibold">Email</label>
+        <input id="modal-email" name="email" type="email" autoComplete="email" required defaultValue={state.email} className={field} />
       </div>
-      <div className="flex items-baseline justify-between gap-4 rounded-md bg-card px-4 py-3 text-sm">
-        <span className="truncate font-semibold">{email}</span>
-        <button type="button" onClick={onBack} className="shrink-0 font-semibold text-primary underline underline-offset-4">
-          Change
-        </button>
-      </div>
-      <input type="hidden" name="email" value={email} />
-      {mode === "register" && (
-        <NameFields idPrefix="modal" firstName={state.firstName} lastName={state.lastName} autoFocus />
-      )}
-      <PasswordField id="modal-password" mode={mode === "register" ? "new" : "current"} autoFocus={mode === "login"} />
-      {mode === "login" && (
-        <p className="text-sm">
-          <a href="/forgot" className="font-semibold text-primary underline underline-offset-4">
-            Forgot your password?
-          </a>
-        </p>
-      )}
-      {state.error && (
-        <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
-          {state.error}
-        </p>
-      )}
-      {mode === "register" && <ConsentNote />}
+      <PasswordField id="modal-password" mode="new" />
+      <ErrorNote state={state} onSwitch={onSwitch} />
+      <ConsentNote />
       <button type="submit" disabled={pending} className={primaryBtn}>
-        {pending ? "One moment…" : mode === "register" ? "Create free account" : "Sign in"}
+        {pending ? "One moment" : "Create free account"}
       </button>
+      <p className="pt-2 text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <button type="button" onClick={onSwitch} className="font-semibold text-primary underline underline-offset-4">
+          Sign in
+        </button>
+      </p>
     </form>
   );
 }
@@ -175,16 +144,18 @@ function PasswordStep({
 export default function AuthModal({
   providers,
   open,
+  mode,
+  onModeChange,
   onClose,
 }: {
   providers: string[];
   open: boolean;
+  mode: AuthMode;
+  onModeChange: (m: AuthMode) => void;
   onClose: () => void;
 }) {
-  const [step, setStep] = useState<
-    { kind: "email" } | { kind: "password"; email: string; mode: "login" | "register" } | { kind: "social-only"; email: string }
-  >({ kind: "email" });
   const panelRef = useRef<HTMLDivElement>(null);
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -197,11 +168,14 @@ export default function AuthModal({
     };
   }, [open, onClose]);
 
-  useEffect(() => {
-    if (!open) setStep({ kind: "email" });
-  }, [open]);
+  // Remount the form when the mode changes so state does not leak across.
+  const switchTo = (m: AuthMode) => {
+    onModeChange(m);
+    setKey((k) => k + 1);
+  };
 
   if (!open) return null;
+  const isJoin = mode === "join";
 
   return (
     <div
@@ -215,59 +189,36 @@ export default function AuthModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="max-h-[90svh] w-full max-w-md overflow-y-auto rounded-lg bg-background p-8 shadow-xl" /* true overlay; design-lint-ignore */
+        className="relative max-h-[92svh] w-full max-w-md overflow-y-auto rounded-lg bg-background p-8 shadow-xl" /* true overlay; design-lint-ignore */
       >
-        <div className="flex items-start justify-between gap-4">
-          <h2 id="auth-modal-title" className="text-2xl font-bold leading-tight">
-            Log in or create account
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md hover:bg-card active:translate-y-px"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-              <path d="M6 6l12 12M18 6 6 18" />
-            </svg>
-          </button>
-        </div>
-        <p className="mt-2 leading-relaxed text-muted-foreground">
-          Enter your email. We&apos;ll sign you in, or set you up in a moment — free, no card needed.
-        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md hover:bg-card active:translate-y-px"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
 
-        <div className="mt-6">
-          {step.kind === "email" && (
-            <EmailStep
-              onKnown={(email, exists, social) =>
-                setStep(
-                  social
-                    ? { kind: "social-only", email }
-                    : { kind: "password", email, mode: exists ? "login" : "register" }
-                )
-              }
-            />
-          )}
-          {step.kind === "password" && (
-            <PasswordStep
-              email={step.email}
-              mode={step.mode}
-              onBack={() => setStep({ kind: "email" })}
-            />
-          )}
-          {step.kind === "social-only" && (
-            <div className="space-y-4">
-              <p className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground">
-                {step.email} signs in with a social account — use its button below.
-              </p>
-              <button
-                type="button"
-                onClick={() => setStep({ kind: "email" })}
-                className="text-sm font-semibold text-primary underline underline-offset-4"
-              >
-                Use a different email
-              </button>
-            </div>
+        <div className="flex flex-col items-center text-center">
+          <LogoMark size={48} />
+          <h2 id="auth-modal-title" className="mt-4 text-2xl font-bold leading-tight">
+            {isJoin ? "Create your SkillBridge account" : "Welcome back"}
+          </h2>
+          <p className="mt-2 max-w-xs leading-relaxed text-muted-foreground">
+            {isJoin
+              ? "Free to start. No card needed."
+              : "Sign in to pick up where you left off."}
+          </p>
+        </div>
+
+        <div className="mt-6" key={key}>
+          {isJoin ? (
+            <JoinForm onSwitch={() => switchTo("signin")} />
+          ) : (
+            <SignInForm onSwitch={() => switchTo("join")} />
           )}
         </div>
 

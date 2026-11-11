@@ -5,6 +5,7 @@ import { CATEGORIES, COURSES } from "@/lib/catalog";
 import { oauthProviders } from "@/auth";
 import AuthLauncher from "@/components/AuthLauncher";
 import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -20,7 +21,7 @@ const SITE =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: {
-    default: "SkillBridge — Courses and credit for what you already know",
+    default: "SkillBridge: Courses and credit for what you already know",
     template: "%s · SkillBridge",
   },
   description:
@@ -37,8 +38,8 @@ function Header() {
   return (
     <header className="bg-card">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
-        <Link href="/" className="text-lg font-bold tracking-tight">
-          SkillBridge
+        <Link href="/" aria-label="SkillBridge home">
+          <Logo />
         </Link>
         <form action="/catalog" className="relative hidden flex-1 max-w-md sm:block">
           <label htmlFor="site-search" className="sr-only">
@@ -127,7 +128,7 @@ function Footer() {
             <Link href="/privacy" className="hover:underline">Privacy</Link>
           </nav>
         </div>
-        <p className="mt-4 text-sm">Only colleges award credit — check your school&apos;s PLA policy.</p>
+        <p className="mt-4 text-sm">Only colleges award credit. Check your school&apos;s PLA policy.</p>
       </div>
     </footer>
   );

@@ -97,7 +97,7 @@ export function PasswordField({
           className={`mt-1.5 text-sm transition-colors ${strong ? "font-semibold text-success" : "text-muted-foreground"}`}
           aria-live="polite"
         >
-          {strong ? "Good — that's long enough." : `At least 10 characters${length ? ` (${length} so far)` : ""}.`}
+          {strong ? "Good, that's long enough." : `At least 10 characters${length ? ` (${length} so far)` : ""}.`}
         </p>
       )}
     </div>

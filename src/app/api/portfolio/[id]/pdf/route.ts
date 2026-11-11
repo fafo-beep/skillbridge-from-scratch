@@ -87,7 +87,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       doc.moveDown(0.4);
       doc.font("Helvetica-Bold").text("Evidence");
       doc.font("Helvetica");
-      for (const e of evidence) doc.text(`• ${e.title} — ${e.kind}`, { indent: 10 });
+      for (const e of evidence) doc.text(`• ${e.title} (${e.kind})`, { indent: 10 });
     }
   }
 

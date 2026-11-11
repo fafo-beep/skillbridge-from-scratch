@@ -16,6 +16,11 @@ const RULES = [
     why: "No emoji in the interface. Use words, or a plain icon with meaning.",
   },
   {
+    id: "dash",
+    re: /[\u2014\u2013]/,
+    why: "No em or en dashes in the interface. Use a comma, a colon, a period, or the word 'to'.",
+  },
+  {
     id: "gradient",
     re: /bg-gradient-|linear-gradient|radial-gradient|conic-gradient/,
     why: "No gradients. Flat colour, or a real picture.",

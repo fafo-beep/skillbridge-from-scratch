@@ -12,7 +12,7 @@ import { LEGAL } from "@/lib/legal";
 //
 // Linking model (reviewed adversarially; see commit message):
 // - A social identity is keyed by (provider, providerAccountId) in
-//   OAuthAccount — never by bare email.
+//   OAuthAccount, never by bare email.
 // - A social identity may attach to an EXISTING user only when the
 //   provider asserts the email is verified. Facebook has no verified-email
 //   contract, so a Facebook identity never auto-links to an existing

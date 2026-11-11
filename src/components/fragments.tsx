@@ -1,5 +1,5 @@
 // Interface fragments: real pieces of the product, cropped for the
-// marketing pages. Marked data-ui — they keep their own table lines and
+// marketing pages. Marked data-ui: they keep their own table lines and
 // conventions, and they are the honest pictures of a software product.
 
 export function EvaluationFragment() {
@@ -138,7 +138,7 @@ export function EvidenceFragment() {
   const files = [
     ["Holiday staffing plan 2024.xlsx", "Spreadsheet · outcome 2"],
     ["Store P&L summary, Q4.pdf", "Report · outcomes 1 and 2"],
-    ["Performance review — M. Reyes.pdf", "Manager review · outcome 3"],
+    ["Performance review, M. Reyes.pdf", "Manager review · outcome 3"],
     ["Food safety certification.pdf", "Certificate · outcome 3"],
   ] as const;
   return (

@@ -146,7 +146,7 @@ export const COURSES: Course[] = [
     priceUSD: 0,
     plaEligible: true,
     summary:
-      "Clear writing, confident presentation, and communication that moves work forward — the skill every other course assumes.",
+      "Clear writing, confident presentation, and communication that moves work forward: the skill every other course assumes.",
     outcomes: [
       "Write clear, purposeful business documents",
       "Present to groups with structure and confidence",

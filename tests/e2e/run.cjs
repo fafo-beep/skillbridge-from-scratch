@@ -100,33 +100,35 @@ async function documentOutcomes(page, count, story) {
   await L.waitForSelector("text=1 of 8 lessons");
   ok("sign in, progress persisted");
 
-  // ── 2. Auth dialog branches ───────────────────────────────────────
-  section("Auth dialog");
+  // ── 2. Auth dialogs: Create account and Sign in are separate, and link to each other ──
+  section("Auth dialogs");
   const M = await (await ctx()).newPage();
   await M.goto(BASE);
   await M.click('button:has-text("Join free")');
-  await M.waitForSelector("text=Log in or create account");
+  await M.waitForSelector("text=Create your SkillBridge account");
   const modalEmail = `modal${stamp}@example.com`;
-  await M.fill("#modal-email", modalEmail);
-  await M.click('button:has-text("Continue")');
-  await M.waitForSelector("text=Create your account");
   await M.fill("#modal-first", "Modal");
   await M.fill("#modal-last", "User");
+  await M.fill("#modal-email", modalEmail);
   await M.fill("#modal-password", PASS);
-  await M.click('button:has-text("Create free account")');
+  await M.click('[role=dialog] button:has-text("Create free account")');
   await M.waitForURL("**/dashboard", { timeout: 30000 });
-  ok("new email -> create account -> dashboard");
+  ok("create-account dialog -> dashboard");
   await M.click('button:has-text("Sign out")');
   await M.waitForURL(BASE + "/", { timeout: 30000 });
-  await M.click('button:has-text("Sign in")');
-  await M.fill("#modal-email", modalEmail);
-  await M.click('button:has-text("Continue")');
+  await M.click('header button:has-text("Sign in")');
   await M.waitForSelector("text=Welcome back");
-  if (await M.locator("#modal-first").count()) throw new Error("existing email got the name fields");
+  if (await M.locator("#modal-first").count()) throw new Error("sign-in dialog shows name fields");
+  await M.click('[role=dialog] button:has-text("Create one free")');
+  await M.waitForSelector("text=Create your SkillBridge account");
+  await M.click('[role=dialog] button:has-text("Sign in")');
+  await M.waitForSelector("text=Welcome back");
+  ok("dialogs link to each other both ways");
+  await M.fill("#modal-email", modalEmail);
   await M.fill("#modal-password", PASS);
   await M.click('[role=dialog] button[type=submit]:has-text("Sign in")');
   await M.waitForURL("**/dashboard", { timeout: 30000 });
-  ok("existing email -> welcome back -> sign in");
+  ok("sign-in dialog -> dashboard");
   await M.goto(BASE + "/upgrade");
   await M.click('button:has-text("Upgrade for $99")');
   await M.waitForURL("**/dashboard?unverified=1", { timeout: 30000 });
@@ -134,8 +136,17 @@ async function documentOutcomes(page, count, story) {
   ok("unverified account gated from paying");
   await M.goto(BASE);
   await M.click('button:has-text("Join free")');
+  await M.fill("#modal-first", "Dup");
+  await M.fill("#modal-last", "User");
+  await M.fill("#modal-email", modalEmail);
+  await M.fill("#modal-password", PASS);
+  await M.click('[role=dialog] button:has-text("Create free account")');
+  await M.waitForSelector("text=already exists");
+  await M.click('[role=dialog] button:has-text("Sign in instead")');
+  await M.waitForSelector("text=Welcome back");
+  ok("existing email on create -> offered sign in");
   await M.keyboard.press("Escape");
-  await M.waitForSelector("text=Log in or create account", { state: "detached" });
+  await M.waitForSelector("text=Welcome back", { state: "detached" });
   ok("escape closes");
 
   // ── 3. Portfolio loop: document, submit, evaluate, see result ─────
@@ -152,7 +163,7 @@ async function documentOutcomes(page, count, story) {
   await L.waitForSelector("text=Proposal template v4.docx");
   ok("evidence added");
   await L.click('button:has-text("Submit portfolio")');
-  await L.waitForSelector("text=Submitted — waiting for an evaluator", { timeout: 20000 });
+  await L.waitForSelector("text=Submitted: waiting for an evaluator", { timeout: 20000 });
   ok("submitted (first evaluation is free)");
   await L.goto(BASE + "/review");
   await L.waitForURL("**/dashboard", { timeout: 20000 });
@@ -174,7 +185,7 @@ async function documentOutcomes(page, count, story) {
   ok("decision recorded, shows in Completed");
 
   await L.goto(BASE + "/dashboard");
-  await L.waitForSelector("text=Approved — credit recommended · 3 credits · score 5/5");
+  await L.waitForSelector("text=Approved: credit recommended · 3 credits · score 5/5");
   ok("learner sees approval");
 
   // ── 4. Premium gate and Stripe webhook ────────────────────────────
@@ -213,7 +224,7 @@ async function documentOutcomes(page, count, story) {
   await L.waitForSelector("text=You're on the full plan.");
   await L.goto(builderUrl);
   await L.click('button:has-text("Submit portfolio")');
-  await L.waitForSelector("text=Submitted — waiting for an evaluator", { timeout: 30000 });
+  await L.waitForSelector("text=Submitted: waiting for an evaluator", { timeout: 30000 });
   ok("submission allowed after verified payment");
   const { rows: pf } = await pg.query(`select p.id from "Portfolio" p join "Course" c on c.id=p."courseId" where p."userId"=$1 and c.code='BUS110'`, [userId]);
   const pdfRes = await L.request.get(BASE + `/api/portfolio/${pf[0].id}/pdf`);

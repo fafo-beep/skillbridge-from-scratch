@@ -3,7 +3,7 @@ import Stripe from "stripe";
 // Stripe client. Payments switch on when STRIPE_SECRET_KEY and
 // STRIPE_WEBHOOK_SECRET are set; until then the upgrade page says so.
 // Premium is granted ONLY by the webhook handler after signature
-// verification — never from the success redirect, never from the client.
+// verification, never from the success redirect, never from the client.
 
 export const stripeConfigured = Boolean(
   process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET

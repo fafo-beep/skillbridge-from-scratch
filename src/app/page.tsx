@@ -3,6 +3,7 @@ import { CATEGORIES, COURSES } from "@/lib/catalog";
 import CourseCard from "@/components/CourseCard";
 import Image from "next/image";
 import Reveal from "@/components/Reveal";
+import ProductScene, { Callout } from "@/components/ProductScene";
 import { PHOTOS } from "@/lib/photos";
 import {
   DecisionFragment,
@@ -83,7 +84,7 @@ export default function HomePage() {
             <p className="mt-6 max-w-xl text-lg leading-relaxed">
               SkillBridge is a course platform for working adults: every pathway
               teaches the skills a role demands, and recognizes the ones your
-              years of work already prove — through Prior Learning Assessment
+              years of work already prove, through Prior Learning Assessment
               your college can review.
             </p>
             <div className="mt-8">
@@ -124,7 +125,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* The numbers, plainly — an inset panel, Coursera-promo style */}
+      {/* The numbers, plainly: an inset panel, Coursera-promo style */}
       <section className="mx-auto max-w-6xl px-6">
         <div className="rounded-lg bg-accent px-8 py-12 text-accent-foreground sm:px-12">
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
@@ -187,34 +188,45 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Inside the product: the honest pictures of software */}
+      {/* Inside the product: floating pieces of the real interface */}
       <section className="mx-auto max-w-6xl px-6 py-20">
-        <h2 data-reveal className="max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
-          One place for the course and the credit
-        </h2>
-        <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div data-reveal>
-            <PlayerFragment />
-            <p className="mt-3 text-sm text-muted-foreground">
-              Lessons, with their lengths stated.
+            <ProductScene
+              primary={<PlayerFragment />}
+              secondary={<ProgressFragment />}
+              callout={<Callout big="2 lessons done today" small="43% of the course complete" />}
+            />
+          </div>
+          <div>
+            <h2 data-reveal className="text-3xl font-bold leading-tight sm:text-4xl">
+              Progress in minutes a day.
+            </h2>
+            <p data-reveal className="mt-4 text-lg leading-relaxed">
+              Every course is short lessons with their lengths stated, in an order
+              that makes sense. Pick up on a phone in a waiting room, mark a lesson
+              done, and the course remembers where you are.
             </p>
           </div>
-          <div data-reveal>
-            <ProgressFragment />
-            <p className="mt-3 text-sm text-muted-foreground">
-              Progress that survives a busy week.
-            </p>
+        </div>
+
+        <div className="mt-24 grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <div className="lg:order-2" data-reveal>
+            <ProductScene
+              flip
+              primary={<EvidenceFragment />}
+              secondary={<DecisionFragment />}
+              callout={<Callout big="3 credits recommended" small="Score 4.2 of 5 from a faculty evaluator" />}
+            />
           </div>
-          <div data-reveal>
-            <EvidenceFragment />
-            <p className="mt-3 text-sm text-muted-foreground">
-              Proof you already have, filed where evaluators look.
-            </p>
-          </div>
-          <div data-reveal>
-            <DecisionFragment />
-            <p className="mt-3 text-sm text-muted-foreground">
-              The credit recommendation, ready for your college.
+          <div className="lg:order-1">
+            <h2 data-reveal className="text-3xl font-bold leading-tight sm:text-4xl">
+              Evidence in. Decision out.
+            </h2>
+            <p data-reveal className="mt-4 text-lg leading-relaxed">
+              Name the files that prove each outcome, submit, and a qualified
+              evaluator scores the portfolio and writes a note you can read. The
+              recommendation is yours to take to your college, as a PDF.
             </p>
           </div>
         </div>
@@ -306,7 +318,7 @@ export default function HomePage() {
               <h3 className="text-xl font-bold">Honest about the limits</h3>
               <p className="mt-3 leading-relaxed">
                 Only colleges award credit. We build the portfolio and the
-                evaluation your school needs to say yes — check its PLA policy
+                evaluation your school needs to say yes. Check its PLA policy
                 first.
               </p>
             </div>

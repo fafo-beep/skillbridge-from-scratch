@@ -8,12 +8,12 @@ import { logout, resendVerification, toggleLesson } from "@/lib/actions";
 export const metadata: Metadata = { title: "My learning" };
 
 const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "Draft — keep documenting",
-  SUBMITTED: "Submitted — awaiting an evaluator",
+  DRAFT: "Draft: keep documenting",
+  SUBMITTED: "Submitted: awaiting an evaluator",
   UNDER_REVIEW: "Under faculty review",
   REVISIONS_REQUESTED: "Revisions requested",
-  APPROVED: "Approved — credit recommended",
-  DENIED: "Not approved — read the feedback",
+  APPROVED: "Approved: credit recommended",
+  DENIED: "Not approved: read the feedback",
 };
 
 export default async function DashboardPage({

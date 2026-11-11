@@ -96,7 +96,7 @@ export default async function AdminPage() {
               <li key={e.id} className="px-5 py-3 text-sm odd:bg-background">
                 <p className="font-semibold">{e.message}</p>
                 <p className="text-muted-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {e.path || "–"} · {e.createdAt.toLocaleString("en-US")}
+                  {e.path || "n/a"} · {e.createdAt.toLocaleString("en-US")}
                 </p>
               </li>
             ))}

@@ -16,12 +16,12 @@ export const metadata: Metadata = { title: "Credit portfolio" };
 const MIN_NARRATIVE = 50;
 const EDITABLE = new Set(["DRAFT", "REVISIONS_REQUESTED"]);
 const STATUS_LINE: Record<string, string> = {
-  DRAFT: "Draft — document each outcome, then submit",
-  SUBMITTED: "Submitted — waiting for an evaluator",
+  DRAFT: "Draft: document each outcome, then submit",
+  SUBMITTED: "Submitted: waiting for an evaluator",
   UNDER_REVIEW: "Under faculty review",
-  REVISIONS_REQUESTED: "Revisions requested — see the evaluator's note, update, and resubmit",
-  APPROVED: "Approved — credit recommended",
-  DENIED: "Not approved — see the evaluator's note",
+  REVISIONS_REQUESTED: "Revisions requested: see the evaluator's note, update, and resubmit",
+  APPROVED: "Approved: credit recommended",
+  DENIED: "Not approved: see the evaluator's note",
 };
 
 const KINDS = ["Work sample", "Certification", "Performance review", "Report", "Spreadsheet", "Other"];
@@ -49,7 +49,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   const decided = ["APPROVED", "DENIED", "REVISIONS_REQUESTED"].includes(portfolio.status);
   const hasReviewerRole = viewer?.role === "REVIEWER" || viewer?.role === "ADMIN";
   // A reviewer sees only what the role needs: the open queue (SUBMITTED)
-  // and their own claimed or decided reviews — never drafts, revisions in
+  // and their own claimed or decided reviews, never drafts, revisions in
   // progress, or another evaluator's case.
   const isReviewer =
     hasReviewerRole &&
@@ -265,7 +265,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
           <form action={decidePortfolio.bind(null, portfolio.id)} className="mt-5 space-y-4">
             <div>
               <label htmlFor="score" className="mb-1.5 block text-sm font-semibold">
-                Score (1–5)
+                Score (1 to 5)
               </label>
               <select id="score" name="score" className="h-11 rounded-md border border-border bg-background px-3">
                 {[5, 4, 3, 2, 1].map((n) => (
