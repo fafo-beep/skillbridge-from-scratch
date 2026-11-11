@@ -99,7 +99,7 @@ async function resolveOAuthUser(opts: {
     if (existing.passwordHash) {
       await db.user.update({
         where: { id: existing.id },
-        data: { passwordHash: null },
+        data: { passwordHash: null, sessionVersion: { increment: 1 } },
       });
       await db.auditLog.create({
         data: {
@@ -172,6 +172,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (linked) token.uid = linked.userId;
       } else if (user?.id) {
         token.uid = user.id;
+      }
+      // Pin the token to the account's current session version. A reset
+      // (or squatter cleanup) bumps the version and every older token dies.
+      if (token.uid) {
+        const current = await db.user.findUnique({
+          where: { id: token.uid as string },
+          select: { sessionVersion: true },
+        });
+        if (!current) return null;
+        if (token.sv === undefined) token.sv = current.sessionVersion;
+        else if (token.sv !== current.sessionVersion) return null;
       }
       return token;
     },

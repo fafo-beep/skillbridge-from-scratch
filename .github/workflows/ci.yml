@@ -13,6 +13,7 @@ env:
   SEED_DEV_USERS: "1"
   SEED_DEV_PASSWORD: dev-reviewer-pass
   AUTH_TRUST_HOST: "true"
+  NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
 jobs:
   build-and-test:

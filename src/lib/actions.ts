@@ -22,8 +22,18 @@ async function audit(userId: string | null, action: string, target: string, deta
 
 export type FormState = { error?: string; email?: string; name?: string; firstName?: string; lastName?: string; notice?: string };
 
+// The origin used in emailed links. In production it must come from
+// configuration, never from request headers, so a forged Host header can
+// never point a password-reset email at an attacker's domain.
 async function siteOrigin(): Promise<string> {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  const configured =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.AUTH_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "");
+  if (configured) return configured.replace(/\/$/, "");
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_SITE_URL must be set in production");
+  }
   const { headers } = await import("next/headers");
   const h = await headers();
   return `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
@@ -75,7 +85,11 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const wait = await rateLimit("login", `${email}|${await clientIp()}`);
+  // Two limiters: per account+IP, and per account alone so that spoofed
+  // or rotating client addresses cannot unlock unlimited guesses.
+  const wait =
+    (await rateLimit("login", `${email}|${await clientIp()}`)) ??
+    (await rateLimit("loginAccount", email));
   if (wait) return { error: retryMessage(wait), email };
   try {
     await signIn("credentials", { email, password, redirectTo: "/dashboard" });
@@ -572,7 +586,10 @@ export async function resetPassword(token: string, _prev: FormState, formData: F
   const userId = await consumeToken(token, "reset");
   if (!userId) return { error: "This reset link is no longer valid. Request a new one." };
   const passwordHash = await bcrypt.hash(password, 12);
-  await db.user.update({ where: { id: userId }, data: { passwordHash, emailVerifiedAt: new Date() } });
+  await db.user.update({
+    where: { id: userId },
+    data: { passwordHash, emailVerifiedAt: new Date(), sessionVersion: { increment: 1 } },
+  });
   await audit(userId, "user.password_reset", userId);
   redirect("/signin?reset=1");
 }

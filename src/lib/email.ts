@@ -27,5 +27,9 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
   } else {
     console.log(`[email outbox] to=${to} subject=${JSON.stringify(subject)}\n${text}`);
   }
-  await db.email.create({ data: { to, subject, text, sentVia } });
+  // With a real provider the stored copy has token links redacted, so a
+  // database read can never recover a live reset or verify link. Without
+  // a provider (development, CI) the outbox IS the delivery channel.
+  const stored = emailConfigured ? text.replace(/\/(verify|reset)\/[A-Za-z0-9_-]+/g, "/$1/[redacted]") : text;
+  await db.email.create({ data: { to, subject, text: stored, sentVia } });
 }

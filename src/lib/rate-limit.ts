@@ -10,6 +10,7 @@ export type Limit = { limit: number; windowSec: number };
 
 export const LIMITS = {
   login: { limit: 10, windowSec: 15 * 60 },
+  loginAccount: { limit: 30, windowSec: 60 * 60 },
   register: { limit: 5, windowSec: 60 * 60 },
   checkEmail: { limit: 30, windowSec: 15 * 60 },
   reset: { limit: 3, windowSec: 60 * 60 },

@@ -43,6 +43,9 @@ model User {
   lastName     String?
   passwordHash String?
   emailVerifiedAt DateTime?
+  // Bumped on password reset and squatter cleanup; a JWT carrying an
+  // older version is rejected, so every other session ends.
+  sessionVersion Int @default(0)
   tokens       SecurityToken[]
   role         Role         @default(LEARNER)
   premium      Boolean      @default(false)

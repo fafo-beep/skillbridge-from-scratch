@@ -263,6 +263,9 @@ async function documentOutcomes(page, count, story) {
   await signIn(F, learnerEmail, newPass);
   await F.waitForURL("**/dashboard", { timeout: 30000 });
   ok("old password rejected, new password works");
+  await L.goto(BASE + "/dashboard");
+  await L.waitForSelector("text=Sign in to see your courses", { timeout: 30000 });
+  ok("older session invalidated by the reset");
   await F.goto(resetLink);
   await F.fill("#reset-password", "another-password-123");
   await F.click('button:has-text("Set new password")');
