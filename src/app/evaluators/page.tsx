@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
+import { PHOTOS } from "@/lib/photos";
 
 export const metadata: Metadata = {
   title: "For evaluators",
@@ -10,18 +12,29 @@ export default function EvaluatorsPage() {
   return (
     <div>
       <section className="bg-card">
-        <div className="mx-auto max-w-6xl px-6 pb-16 pt-14 sm:pt-16">
-          <h1 className="max-w-3xl text-[10vw] font-bold leading-[1.02] tracking-tight sm:text-6xl">
-            Evaluate experience. Recommend credit.
-          </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed">
-            Faculty evaluators read a learner&apos;s portfolio against a course&apos;s stated outcomes, score it, and issue a credit recommendation the learner takes to their college.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/signin" className="rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-              Evaluator sign in
-            </Link>
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 pb-16 pt-14 sm:pt-16 lg:grid-cols-[1fr_1fr]">
+          <div>
+            <h1 className="text-[10vw] font-bold leading-[1.02] tracking-tight sm:text-6xl">
+              Evaluate experience. Recommend credit.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed">
+              Faculty evaluators read a learner&apos;s portfolio against a course&apos;s stated outcomes, score it, and issue a credit recommendation the learner takes to their college.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/signin" className="rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
+                Evaluator sign in
+              </Link>
+            </div>
           </div>
+          <Image
+            src={PHOTOS.evaluator.src}
+            alt={PHOTOS.evaluator.alt}
+            width={PHOTOS.evaluator.width}
+            height={PHOTOS.evaluator.height}
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            className="w-full rounded-lg object-cover"
+            priority
+          />
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-6 py-20">

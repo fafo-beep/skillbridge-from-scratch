@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { CATEGORIES, COURSES } from "@/lib/catalog";
 import CourseCard from "@/components/CourseCard";
+import Image from "next/image";
 import Reveal from "@/components/Reveal";
+import { PHOTOS } from "@/lib/photos";
 import {
   DecisionFragment,
   EvaluationFragment,
@@ -205,6 +207,32 @@ export default function HomePage() {
             <p className="mt-3 text-sm text-muted-foreground">
               Proof you already have, filed where evaluators look.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* The portfolio moment: a real evening, full width */}
+      <section className="relative overflow-hidden bg-[hsl(216_85%_10%)] text-white">
+        <Image
+          src={PHOTOS.evening.src}
+          alt={PHOTOS.evening.alt}
+          width={PHOTOS.evening.width}
+          height={PHOTOS.evening.height}
+          sizes="100vw"
+          className="h-[56vw] max-h-[640px] min-h-[360px] w-full object-cover object-right"
+          priority={false}
+        />
+        <div className="absolute inset-0 flex items-end">
+          <div className="mx-auto w-full max-w-6xl px-6 pb-10 sm:pb-14">
+            <div className="max-w-md rounded-lg bg-[hsl(216_85%_10%/0.78)] p-6 sm:p-8">
+              <h2 data-reveal className="text-3xl font-bold leading-tight sm:text-4xl">
+                Built at the kitchen table, after work.
+              </h2>
+              <p data-reveal className="mt-3 leading-relaxed">
+                A few evenings, the files you already have, and a structure that
+                turns a working life into something a college can evaluate.
+              </p>
+            </div>
           </div>
         </div>
       </section>

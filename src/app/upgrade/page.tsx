@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
+import { PHOTOS } from "@/lib/photos";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
@@ -82,6 +84,14 @@ export default async function UpgradePage({
         Secure checkout by Stripe. SkillBridge does not award credit; only colleges do.
         We build the portfolio and the evaluation your school needs to say yes.
       </p>
+      <Image
+        src={PHOTOS.evening.src}
+        alt={PHOTOS.evening.alt}
+        width={PHOTOS.evening.width}
+        height={PHOTOS.evening.height}
+        sizes="(min-width: 1024px) 896px, 100vw"
+        className="mt-12 w-full rounded-lg object-cover"
+      />
       <p className="mt-8">
         <Link href="/dashboard" className="font-semibold text-primary underline underline-offset-4">
           Back to my learning
