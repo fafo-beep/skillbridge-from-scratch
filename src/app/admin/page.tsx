@@ -27,6 +27,8 @@ export default async function AdminPage() {
   ]);
   const load = new Map(evaluators.map((e) => [e.evaluatorId, e._count._all]));
   const verifiedPayments = await db.payment.count({ where: { verified: true } });
+  const errors = await db.errorLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
+  const emailsSent = await db.email.count();
 
   const stats: Array<[string, string]> = [
     [String(learners), "learners"],
@@ -77,6 +79,25 @@ export default async function AdminPage() {
                 <form action={revokeInvite.bind(null, i.id)}>
                   <button className="font-semibold text-destructive underline underline-offset-4">Revoke</button>
                 </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-bold">Health</h2>
+        <p className="mt-1 text-muted-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {errors.length === 0 ? "No server errors recorded." : `Last ${errors.length} server errors`} · {emailsSent} emails sent
+        </p>
+        {errors.length > 0 && (
+          <ul className="mt-4 rounded-lg bg-card">
+            {errors.map((e) => (
+              <li key={e.id} className="px-5 py-3 text-sm odd:bg-background">
+                <p className="font-semibold">{e.message}</p>
+                <p className="text-muted-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {e.path || "–"} · {e.createdAt.toLocaleString("en-US")}
+                </p>
               </li>
             ))}
           </ul>

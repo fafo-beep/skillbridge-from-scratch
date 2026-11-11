@@ -113,6 +113,9 @@ async function resolveOAuthUser(opts: {
     await db.oAuthAccount.create({
       data: { provider, providerAccountId, userId: existing.id, emailVerified: true },
     });
+    if (!existing.emailVerifiedAt) {
+      await db.user.update({ where: { id: existing.id }, data: { emailVerifiedAt: new Date() } });
+    }
     await db.auditLog.create({
       data: { userId: existing.id, action: "auth.social_link", target: provider },
     });
@@ -129,6 +132,7 @@ async function resolveOAuthUser(opts: {
       firstName: firstName || null,
       lastName: rest.join(" ") || null,
       passwordHash: null,
+      emailVerifiedAt: emailVerified ? new Date() : null,
       oauthAccounts: { create: { provider, providerAccountId, emailVerified } },
     },
   });

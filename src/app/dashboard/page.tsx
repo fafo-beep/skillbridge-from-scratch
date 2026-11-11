@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
-import { logout, toggleLesson } from "@/lib/actions";
+import { logout, resendVerification, toggleLesson } from "@/lib/actions";
 
 export const metadata: Metadata = { title: "My learning" };
 
@@ -16,7 +16,12 @@ const STATUS_LABEL: Record<string, string> = {
   DENIED: "Not approved — read the feedback",
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ unverified?: string; verified?: string; sent?: string; wait?: string }>;
+}) {
+  const notice = await searchParams;
   const session = dbConfigured ? await auth() : null;
 
   if (!session?.user?.id) {
@@ -50,7 +55,7 @@ export default async function DashboardPage() {
   }
 
   const userId = session.user.id;
-  const me = await db.user.findUnique({ where: { id: userId }, select: { premium: true, role: true } });
+  const me = await db.user.findUnique({ where: { id: userId }, select: { premium: true, role: true, emailVerifiedAt: true, email: true } });
   if (me?.role === "REVIEWER") redirect("/review");
   if (me?.role === "ADMIN") redirect("/admin");
   const [enrollments, portfolios] = await Promise.all([
@@ -88,6 +93,30 @@ export default async function DashboardPage() {
           </form>
         </div>
       </div>
+
+      {notice.verified && (
+        <p role="status" className="mt-6 rounded-md bg-secondary px-5 py-4 font-semibold text-secondary-foreground">
+          Email confirmed. Everything is unlocked.
+        </p>
+      )}
+      {!me?.emailVerifiedAt && (
+        <div className="mt-6 rounded-lg bg-secondary p-5 text-secondary-foreground">
+          <p className="font-bold">
+            {notice.unverified ? "Confirm your email first." : "One step left: confirm your email."}
+          </p>
+          <p className="mt-1 leading-relaxed">
+            We sent a confirmation link to {me?.email}. Submitting portfolios and
+            the full plan unlock once it&apos;s confirmed.
+            {notice.sent && " A fresh link is on its way."}
+            {notice.wait && " You've requested several links recently; please wait a while before asking again."}
+          </p>
+          <form action={resendVerification} className="mt-3">
+            <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
+              Resend the link
+            </button>
+          </form>
+        </div>
+      )}
 
       {enrollments.length === 0 && portfolios.length === 0 && (
         <div className="mt-10 rounded-lg bg-card p-10">

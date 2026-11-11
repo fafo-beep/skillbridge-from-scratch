@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { auth, signIn, signOut } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
+import { sendEmail } from "@/lib/email";
+import { consumeToken, issueToken } from "@/lib/tokens";
+import { clientIp, rateLimit, retryMessage } from "@/lib/rate-limit";
 
 // Server actions. Every one re-checks the session server-side; nothing
 // trusts the client. Privileged writes land in AuditLog.
@@ -17,7 +20,24 @@ async function audit(userId: string | null, action: string, target: string, deta
   }
 }
 
-export type FormState = { error?: string; email?: string; name?: string; firstName?: string; lastName?: string };
+export type FormState = { error?: string; email?: string; name?: string; firstName?: string; lastName?: string; notice?: string };
+
+async function siteOrigin(): Promise<string> {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  return `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+}
+
+async function sendVerification(userId: string, email: string, firstName: string | null) {
+  const token = await issueToken(userId, "verify");
+  const origin = await siteOrigin();
+  await sendEmail(
+    email,
+    "Confirm your SkillBridge email",
+    `Hi ${firstName ?? "there"},\n\nConfirm your email to submit portfolios and unlock everything on SkillBridge:\n\n${origin}/verify/${token}\n\nThe link works once and expires in 24 hours. If you did not create an account, ignore this email.`
+  );
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,6 +50,9 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   const password = String(formData.get("password") ?? "");
   const echo = { email, firstName, lastName };
 
+  const ip = await clientIp();
+  const wait = await rateLimit("register", ip);
+  if (wait) return { error: retryMessage(wait), ...echo };
   if (!firstName) return { error: "Please enter your first name.", ...echo };
   if (!lastName) return { error: "Please enter your last name.", ...echo };
   if (!EMAIL_RE.test(email)) return { error: "Please enter a valid email address.", ...echo };
@@ -42,6 +65,7 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await db.user.create({ data: { name, firstName, lastName, email, passwordHash } });
   await audit(user.id, "user.register", user.id);
+  await sendVerification(user.id, email, firstName);
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
   return {};
@@ -51,6 +75,8 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const wait = await rateLimit("login", `${email}|${await clientIp()}`);
+  if (wait) return { error: retryMessage(wait), email };
   try {
     await signIn("credentials", { email, password, redirectTo: "/dashboard" });
   } catch (err) {
@@ -73,6 +99,8 @@ export async function checkEmail(_prev: CheckState, formData: FormData): Promise
   if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return { error: "Please enter a valid email address." };
+  const wait = await rateLimit("checkEmail", await clientIp());
+  if (wait) return { error: retryMessage(wait) };
   const user = await db.user.findUnique({ where: { email }, select: { passwordHash: true } });
   return { email, exists: !!user?.passwordHash, social: !!user && !user.passwordHash };
 }
@@ -232,8 +260,14 @@ export async function removeEvidence(evidenceId: string) {
   if (portfolioId) revalidatePath(`/portfolio/${portfolioId}`);
 }
 
+async function requireVerified(userId: string) {
+  const u = await db.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true } });
+  if (!u?.emailVerifiedAt) redirect("/dashboard?unverified=1");
+}
+
 export async function submitPortfolio(portfolioId: string) {
   const userId = await requireUserId();
+  await requireVerified(userId);
   const done = await editableTx(async (tx) => {
     const portfolio = await tx.portfolio.findFirst({
       where: { id: portfolioId, userId, status: { in: ["DRAFT", "REVISIONS_REQUESTED"] } },
@@ -331,6 +365,7 @@ export async function startCheckout() {
   const userId = await requireUserId();
   const { stripe, stripeConfigured, PREMIUM_PRICE_USD } = await import("@/lib/stripe");
   if (!stripeConfigured) redirect("/upgrade");
+  await requireVerified(userId);
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user) redirect("/signin");
   if (user.premium) redirect("/dashboard");
@@ -438,6 +473,9 @@ export async function acceptInvite(token: string, _prev: FormState, formData: Fo
   const name = `${firstName} ${lastName}`.trim();
   const password = String(formData.get("password") ?? "");
   const echo = { firstName, lastName };
+  const ip = await clientIp();
+  const wait = await rateLimit("register", ip);
+  if (wait) return { error: retryMessage(wait), ...echo };
   if (!firstName) return { error: "Please enter your first name.", ...echo };
   if (!lastName) return { error: "Please enter your last name.", ...echo };
   if (password.length < 10) return { error: "Use a password of at least 10 characters.", ...echo };
@@ -452,7 +490,7 @@ export async function acceptInvite(token: string, _prev: FormState, formData: Fo
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await db.$transaction(async (tx) => {
     const u = await tx.user.create({
-      data: { name, firstName, lastName, email: invite.email, passwordHash, role: invite.role },
+      data: { name, firstName, lastName, email: invite.email, passwordHash, role: invite.role, emailVerifiedAt: new Date() },
     });
     await tx.invite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
     return u;
@@ -475,4 +513,66 @@ export async function acceptInviteSignedIn(token: string) {
   ]);
   await audit(userId, "invite.accept", invite.email, invite.role);
   redirect("/dashboard");
+}
+
+
+// ── Email verification and password reset ────────────────────────────────
+
+export async function resendVerification() {
+  const userId = await requireUserId();
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user || user.emailVerifiedAt) redirect("/dashboard");
+  const wait = await rateLimit("verifyResend", userId);
+  if (wait) redirect("/dashboard?unverified=1&wait=1");
+  await sendVerification(user.id, user.email, user.firstName);
+  redirect("/dashboard?unverified=1&sent=1");
+}
+
+export async function confirmVerification(token: string) {
+  if (!dbConfigured) redirect("/");
+  const userId = await consumeToken(token, "verify");
+  if (!userId) redirect("/verify/invalid");
+  await db.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } });
+  await audit(userId, "user.email_verified", userId);
+  redirect("/dashboard?verified=1");
+}
+
+// Always answers the same way, so it cannot be used to probe accounts.
+export async function forgotPassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Please enter a valid email address.", email };
+  const ip = await clientIp();
+  const wait = (await rateLimit("reset", email)) ?? (await rateLimit("reset", ip));
+  if (wait) return { error: retryMessage(wait), email };
+  const user = await db.user.findUnique({ where: { email } });
+  if (user?.passwordHash) {
+    const token = await issueToken(user.id, "reset");
+    const origin = await siteOrigin();
+    await sendEmail(
+      email,
+      "Reset your SkillBridge password",
+      `Hi ${user.firstName ?? "there"},\n\nSet a new password here:\n\n${origin}/reset/${token}\n\nThe link works once and expires in 1 hour. If you did not ask for this, you can ignore it; your password stays the same.`
+    );
+    await audit(user.id, "user.reset_requested", email);
+  } else if (user) {
+    await sendEmail(
+      email,
+      "Your SkillBridge sign-in",
+      `Hi ${user.firstName ?? "there"},\n\nThis account signs in with a social provider (Google, Facebook or Apple), so it has no password to reset. Use the provider's button on the sign-in page.`
+    );
+  }
+  return { notice: "If an account exists for that email, a reset link is on its way. Check your inbox." };
+}
+
+export async function resetPassword(token: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 10) return { error: "Use a password of at least 10 characters." };
+  const userId = await consumeToken(token, "reset");
+  if (!userId) return { error: "This reset link is no longer valid. Request a new one." };
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.user.update({ where: { id: userId }, data: { passwordHash, emailVerifiedAt: new Date() } });
+  await audit(userId, "user.password_reset", userId);
+  redirect("/signin?reset=1");
 }

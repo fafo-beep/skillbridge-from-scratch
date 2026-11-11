@@ -103,6 +103,7 @@ async function main() {
             email: "reviewer@dev.local",
             name: "Dev Reviewer",
             role: "REVIEWER",
+            emailVerifiedAt: new Date(),
             passwordHash: await bcrypt.default.hash(password, 12),
           },
         });
@@ -112,7 +113,7 @@ async function main() {
       if (!admin) {
         const bcrypt = await import("bcryptjs");
         await prisma.user.create({
-          data: { email: "admin@dev.local", name: "Dev Admin", role: "ADMIN", passwordHash: await bcrypt.default.hash(password, 12) },
+          data: { email: "admin@dev.local", name: "Dev Admin", role: "ADMIN", emailVerifiedAt: new Date(), passwordHash: await bcrypt.default.hash(password, 12) },
         });
         console.log("Dev admin seeded: admin@dev.local");
       }

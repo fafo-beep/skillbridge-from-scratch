@@ -18,6 +18,16 @@ let step = "";
 const ok = (msg) => console.log(`  ✓ ${msg}`);
 const section = (name) => { step = name; console.log(`\n${name}`); };
 
+async function latestLink(pg, to, pathPrefix) {
+  for (let i = 0; i < 20; i++) {
+    const { rows } = await pg.query(`select text from "Email" where "to"=$1 order by "createdAt" desc limit 1`, [to]);
+    const m = rows[0] && rows[0].text.match(new RegExp(`https?://[^\\s]+${pathPrefix}[^\\s]+`));
+    if (m) return m[0].replace(/^https?:\/\/[^/]+/, BASE);
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`no ${pathPrefix} link emailed to ${to}`);
+}
+
 async function signIn(page, email, password) {
   await page.goto(BASE + "/signin");
   await page.fill("#email", email);
@@ -58,6 +68,17 @@ async function documentOutcomes(page, count, story) {
   const L = await (await ctx()).newPage();
   await register(L, "Loop", learnerLast, learnerEmail);
   ok("register -> dashboard");
+  await L.waitForSelector("text=One step left: confirm your email.");
+  const verifyLink = await latestLink(pg, learnerEmail, "/verify/");
+  await L.goto(verifyLink);
+  await L.click('button:has-text("Confirm my email")');
+  await L.waitForURL("**/dashboard?verified=1", { timeout: 30000 });
+  await L.waitForSelector("text=Email confirmed. Everything is unlocked.");
+  ok("email verification via emailed link");
+  await L.goto(verifyLink);
+  await L.click('button:has-text("Confirm my email")');
+  await L.waitForURL("**/verify/invalid", { timeout: 30000 });
+  ok("verification link single-use");
   await L.goto(BASE + "/courses/principles-of-management");
   await L.click("text=Enroll free");
   await L.waitForURL("**/dashboard", { timeout: 30000 });
@@ -106,6 +127,11 @@ async function documentOutcomes(page, count, story) {
   await M.click('[role=dialog] button[type=submit]:has-text("Sign in")');
   await M.waitForURL("**/dashboard", { timeout: 30000 });
   ok("existing email -> welcome back -> sign in");
+  await M.goto(BASE + "/upgrade");
+  await M.click('button:has-text("Upgrade for $99")');
+  await M.waitForURL("**/dashboard?unverified=1", { timeout: 30000 });
+  await M.waitForSelector("text=Confirm your email first.");
+  ok("unverified account gated from paying");
   await M.goto(BASE);
   await M.click('button:has-text("Join free")');
   await M.keyboard.press("Escape");
@@ -216,6 +242,44 @@ async function documentOutcomes(page, count, story) {
   await L.goto(BASE + "/admin");
   await L.waitForURL("**/dashboard", { timeout: 20000 });
   ok("learner blocked from /admin");
+
+  // ── 6. Password reset ─────────────────────────────────────────────
+  section("Password reset");
+  const F = await (await ctx()).newPage();
+  await F.goto(BASE + "/forgot");
+  await F.fill("#email", learnerEmail);
+  await F.click('button:has-text("Send reset link")');
+  await F.waitForSelector("text=a reset link is on its way");
+  const resetLink = await latestLink(pg, learnerEmail, "/reset/");
+  await F.goto(resetLink);
+  const newPass = "brand-new-password-42";
+  await F.fill("#reset-password", newPass);
+  await F.click('button:has-text("Set new password")');
+  await F.waitForURL("**/signin?reset=1", { timeout: 30000 });
+  await F.waitForSelector("text=Password updated.");
+  ok("reset link sets a new password");
+  await signIn(F, learnerEmail, PASS);
+  await F.waitForSelector("text=Email or password is incorrect");
+  await signIn(F, learnerEmail, newPass);
+  await F.waitForURL("**/dashboard", { timeout: 30000 });
+  ok("old password rejected, new password works");
+  await F.goto(resetLink);
+  await F.fill("#reset-password", "another-password-123");
+  await F.click('button:has-text("Set new password")');
+  await F.waitForSelector("text=no longer valid");
+  ok("reset link single-use");
+
+  // ── 7. Rate limiting ──────────────────────────────────────────────
+  section("Rate limiting");
+  const T = await (await ctx()).newPage();
+  const target = `limit${stamp}@example.com`;
+  for (let i = 0; i < 10; i++) {
+    await signIn(T, target, "wrong-password-xx");
+    await T.waitForSelector("text=Email or password is incorrect");
+  }
+  await signIn(T, target, "wrong-password-xx");
+  await T.waitForSelector("text=Too many attempts");
+  ok("11th failed sign-in in 15 minutes is blocked");
 
   await pg.end();
   await browser.close();

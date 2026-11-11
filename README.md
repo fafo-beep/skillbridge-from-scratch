@@ -122,6 +122,23 @@ The first admin of a deployment is promoted by script:
 DATABASE_URL=... npm run make-admin -- you@example.com
 ```
 
+## Email, verification, reset, rate limits, errors
+
+- Sign-up sends a confirmation link; until it is confirmed an account
+  can browse and build but cannot submit a portfolio or buy the full
+  plan. Social sign-ins with a provider-verified email are confirmed
+  automatically. Invited staff count as confirmed.
+- "Forgot your password?" sends a one-hour, single-use reset link. Tokens
+  are stored hashed and consumed atomically.
+- Email goes through Resend when `RESEND_API_KEY` (and `EMAIL_FROM`) are
+  set. Without them, every message is recorded in the `Email` table and
+  printed to the server log — how development and CI read the links.
+- Rate limits (database-backed, so they hold on serverless): sign-in 10
+  per account+IP per 15 min, sign-up 5 per IP per hour, email checks 30
+  per IP per 15 min, reset requests 3 per hour.
+- Every server request error is recorded in `ErrorLog` and listed on
+  `/admin`; `src/instrumentation.ts` is where a Sentry client plugs in.
+
 ## Payments (Stripe)
 
 The $99 one-time upgrade uses Stripe Checkout. Set `STRIPE_SECRET_KEY`
@@ -135,8 +152,6 @@ Free tier: one portfolio evaluated. Premium: unlimited.
 
 ## Roadmap
 
-1. Email verification at registration and password reset (needs an
-   email provider), rate limiting on auth and write endpoints
-2. Evidence file upload (needs blob storage), PDF export
+1. Evidence file upload (needs blob storage), PDF export
 3. Lesson content pages and video via Mux/Cloudflare Stream
 4. Real photography for the marketing pages

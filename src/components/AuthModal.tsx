@@ -150,6 +150,13 @@ function PasswordStep({
         <NameFields idPrefix="modal" firstName={state.firstName} lastName={state.lastName} autoFocus />
       )}
       <PasswordField id="modal-password" mode={mode === "register" ? "new" : "current"} autoFocus={mode === "login"} />
+      {mode === "login" && (
+        <p className="text-sm">
+          <a href="/forgot" className="font-semibold text-primary underline underline-offset-4">
+            Forgot your password?
+          </a>
+        </p>
+      )}
       {state.error && (
         <p role="alert" className="rounded-md bg-secondary px-4 py-3 text-sm font-semibold text-destructive">
           {state.error}

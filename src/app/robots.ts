@@ -4,7 +4,7 @@ const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://skillbridge.example.co
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/dashboard", "/portfolio", "/review", "/admin", "/invite", "/upgrade"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/dashboard", "/portfolio", "/review", "/admin", "/invite", "/upgrade", "/verify", "/reset", "/forgot"] },
     sitemap: `${BASE}/sitemap.xml`,
   };
 }

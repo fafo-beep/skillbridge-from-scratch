@@ -42,6 +42,8 @@ model User {
   firstName    String?
   lastName     String?
   passwordHash String?
+  emailVerifiedAt DateTime?
+  tokens       SecurityToken[]
   role         Role         @default(LEARNER)
   premium      Boolean      @default(false)
   createdAt    DateTime     @default(now())
@@ -50,6 +52,56 @@ model User {
   payments     Payment[]
   auditLogs    AuditLog[]
   oauthAccounts OAuthAccount[]
+}
+
+// Single-use, hashed tokens for email verification and password reset.
+model SecurityToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  purpose   String    // "verify" | "reset"
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
+}
+
+// Outgoing email. Sent through the provider when configured; always
+// recorded here (the "outbox"), which is also how development and CI
+// read verification and reset links without a provider.
+model Email {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  text      String
+  sentVia   String   // "resend" | "outbox"
+  createdAt DateTime @default(now())
+
+  @@index([to, createdAt])
+}
+
+// Fixed-window rate limiting that works on serverless: one row per
+// (key, window), counted with an atomic upsert.
+model RateLimit {
+  key     String
+  window  Int
+  count   Int    @default(1)
+
+  @@id([key, window])
+}
+
+// Server errors, captured by instrumentation for the admin page.
+model ErrorLog {
+  id        String   @id @default(cuid())
+  message   String
+  digest    String   @default("")
+  path      String   @default("")
+  stack     String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // Reviewer/admin onboarding is by invitation only; nobody self-assigns a role.
