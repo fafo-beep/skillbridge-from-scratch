@@ -21,8 +21,8 @@ export default function JoinPage() {
       </div>
       <p className="mt-6 text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/signin" className="font-semibold text-primary underline underline-offset-4">
-          Sign in
+        <Link href="/signin" className="font-semibold text-primary hover:text-accent">
+          Sign In
         </Link>
       </p>
     </div>

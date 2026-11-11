@@ -28,14 +28,14 @@ export default async function SignInPage({
         <AuthForm action={login} mode="signin" />
       </div>
       <p className="mt-4 text-sm">
-        <Link href="/forgot" className="font-semibold text-primary underline underline-offset-4">
-          Forgot your password?
+        <Link href="/forgot" className="font-semibold text-primary hover:text-accent">
+          Forgot Your Password?
         </Link>
       </p>
       <p className="mt-6 text-sm text-muted-foreground">
         New here?{" "}
-        <Link href="/join" className="font-semibold text-primary underline underline-offset-4">
-          Create a free account
+        <Link href="/join" className="font-semibold text-primary hover:text-accent">
+          Create a Free Account
         </Link>
       </p>
     </div>

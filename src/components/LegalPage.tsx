@@ -23,7 +23,7 @@ export default function LegalPage({
         <ol className="mt-2 columns-1 gap-8 text-sm sm:columns-2">
           {sections.map((s, i) => (
             <li key={s.heading} className="py-0.5">
-              <a href={`#s${i + 1}`} className="text-primary hover:underline">
+              <a href={`#s${i + 1}`} className="text-primary hover:text-primary">
                 {i + 1}. {s.heading}
               </a>
             </li>
@@ -53,11 +53,11 @@ export default function LegalPage({
       </div>
       <p className="mt-14 text-sm text-muted-foreground">
         Related:{" "}
-        <Link href="/terms" className="font-semibold text-primary underline underline-offset-4">Terms of Service</Link>
+        <Link href="/terms" className="font-semibold text-primary hover:text-accent">Terms of Service</Link>
         {" · "}
-        <Link href="/acceptable-use" className="font-semibold text-primary underline underline-offset-4">Acceptable Use Policy</Link>
+        <Link href="/acceptable-use" className="font-semibold text-primary hover:text-accent">Acceptable Use Policy</Link>
         {" · "}
-        <Link href="/privacy" className="font-semibold text-primary underline underline-offset-4">Privacy Policy</Link>
+        <Link href="/privacy" className="font-semibold text-primary hover:text-accent">Privacy Policy</Link>
       </p>
     </div>
   );

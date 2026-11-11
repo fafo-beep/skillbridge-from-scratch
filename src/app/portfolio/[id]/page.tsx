@@ -115,7 +115,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
       )}
       {decided && isOwner && !viewer?.premium && (
         <p className="mt-3 text-sm">
-          <Link href="/upgrade" className="font-semibold text-primary underline underline-offset-4">
+          <Link href="/upgrade" className="font-semibold text-primary hover:text-accent">
             The full plan includes this portfolio as a PDF to take to your college
           </Link>
         </p>
@@ -174,7 +174,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                     className="w-full rounded-md border border-border bg-background p-4 leading-relaxed placeholder:text-muted-foreground"
                   />
                   <button className="mt-3 rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-                    Save this outcome
+                    Save This Outcome
                   </button>
                 </form>
               ) : (
@@ -199,13 +199,13 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                             {e.fileSize != null ? ` · ${formatBytes(e.fileSize)}` : " · described, no file"}
                           </span>
                           {e.fileKey && (
-                            <a href={`/api/evidence/${e.id}/file`} className="font-semibold text-primary underline underline-offset-4">
+                            <a href={`/api/evidence/${e.id}/file`} className="font-semibold text-primary hover:text-accent">
                               Download
                             </a>
                           )}
                           {editable && (
                             <form action={removeEvidence.bind(null, e.id)}>
-                              <button className="font-semibold text-destructive underline underline-offset-4">
+                              <button className="font-semibold text-destructive hover:opacity-80">
                                 Remove
                               </button>
                             </form>
@@ -236,8 +236,8 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                 )}
                 {editable && (
                   <details className="mt-3">
-                    <summary className="cursor-pointer text-sm font-semibold text-primary underline underline-offset-4">
-                      Name a document you cannot upload
+                    <summary className="cursor-pointer text-sm font-semibold text-primary hover:text-accent">
+                      Name a Document You Cannot Upload
                     </summary>
                   <form
                     action={addEvidence.bind(null, portfolio.id, outcome.id)}
@@ -266,7 +266,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                       ))}
                     </select>
                     <button className="h-11 rounded-md bg-secondary px-5 text-sm font-semibold text-secondary-foreground hover:bg-muted active:translate-y-px">
-                      Add evidence
+                      Add Evidence
                     </button>
                   </form>
                   </details>
@@ -287,7 +287,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
           {done === total ? (
             <form action={submitPortfolio.bind(null, portfolio.id)} className="mt-5">
               <button className="rounded-md bg-primary px-8 py-3.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-                Submit portfolio
+                Submit Portfolio
               </button>
             </form>
           ) : (
@@ -332,21 +332,21 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
                 value="approve"
                 className="rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
               >
-                Recommend credit
+                Recommend Credit
               </button>
               <button
                 name="decision"
                 value="revisions"
                 className="rounded-md bg-secondary px-6 py-3 font-semibold text-secondary-foreground hover:bg-muted active:translate-y-px"
               >
-                Request revisions
+                Request Revisions
               </button>
               <button
                 name="decision"
                 value="deny"
                 className="rounded-md bg-secondary px-6 py-3 font-semibold text-destructive hover:bg-muted active:translate-y-px"
               >
-                Do not recommend
+                Do Not Recommend
               </button>
             </div>
           </form>
@@ -356,9 +356,9 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
       <p className="mt-10">
         <Link
           href={isOwner ? "/dashboard" : "/review"}
-          className="font-semibold text-primary underline underline-offset-4"
+          className="font-semibold text-primary hover:text-accent"
         >
-          {isOwner ? "Back to my learning" : "Back to the review queue"}
+          {isOwner ? "Back to My Learning" : "Back to the Review Queue"}
         </Link>
       </p>
     </div>

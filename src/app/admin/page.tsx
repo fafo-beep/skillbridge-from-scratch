@@ -50,9 +50,9 @@ export default async function AdminPage() {
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h1 className="text-4xl font-bold leading-tight">Admin</h1>
         <div className="flex flex-wrap items-baseline gap-5 text-sm font-semibold">
-          <Link href="/review" className="text-primary underline underline-offset-4">Evaluator dashboard</Link>
+          <Link href="/review" className="text-primary hover:text-accent">Evaluator Dashboard</Link>
           <form action={logout}>
-            <button className="text-primary underline underline-offset-4">Sign out ({viewer.name})</button>
+            <button className="text-primary hover:text-accent">Sign Out ({viewer.name})</button>
           </form>
         </div>
       </div>
@@ -67,7 +67,7 @@ export default async function AdminPage() {
       </div>
 
       <section className="mt-12">
-        <h2 className="text-2xl font-bold">Invite an evaluator</h2>
+        <h2 className="text-2xl font-bold">Invite an Evaluator</h2>
         <p className="mt-1 leading-relaxed text-muted-foreground">
           Evaluators and admins join by invitation only. Create a link and send it to them.
         </p>
@@ -83,7 +83,7 @@ export default async function AdminPage() {
                   <span className="text-muted-foreground"> · {i.role === "ADMIN" ? "Admin" : "Evaluator"} · expires {i.expiresAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                 </span>
                 <form action={revokeInvite.bind(null, i.id)}>
-                  <button className="font-semibold text-destructive underline underline-offset-4">Revoke</button>
+                  <button className="font-semibold text-destructive hover:opacity-80">Revoke</button>
                 </form>
               </li>
             ))}
@@ -111,7 +111,7 @@ export default async function AdminPage() {
       </section>
 
       <section className="mt-12">
-        <h2 className="text-2xl font-bold">Under review</h2>
+        <h2 className="text-2xl font-bold">Under Review</h2>
         <p className="mt-2 text-muted-foreground">
           Every case an evaluator has claimed. Return one to the queue if it has stalled.
         </p>
@@ -126,7 +126,7 @@ export default async function AdminPage() {
                   <span className="text-muted-foreground"> · with {staffName.get(p.evaluatorId ?? "") ?? "an evaluator"} since {p.updatedAt.toISOString().slice(0, 10)}</span>
                 </span>
                 <form action={releaseReview.bind(null, p.id)}>
-                  <button className="text-sm font-semibold text-primary underline underline-offset-4">Return to queue</button>
+                  <button className="text-sm font-semibold text-primary hover:text-accent">Return to Queue</button>
                 </form>
               </li>
             ))}
@@ -135,7 +135,7 @@ export default async function AdminPage() {
       </section>
 
       <section className="mt-12">
-        <h2 className="text-2xl font-bold">Evaluators and admins</h2>
+        <h2 className="text-2xl font-bold">Evaluators and Admins</h2>
         <ul className="mt-4 rounded-lg bg-card">
           {staff.map((u) => (
             <li key={u.id} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 py-3 odd:bg-background" style={{ fontVariantNumeric: "tabular-nums" }}>

@@ -28,7 +28,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           <p className="mt-3 leading-relaxed">Accept to add the {roleName} role to your existing account ({me.email}).</p>
           <form action={acceptInviteSignedIn.bind(null, token)} className="mt-8">
             <button className="rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-              Accept invitation
+              Accept Invitation
             </button>
           </form>
         </>
@@ -48,7 +48,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           <div className="mt-8"><InviteAcceptForm token={token} /></div>
           <p className="mt-6 text-sm text-muted-foreground">
             Already have an account with this email?{" "}
-            <Link href="/signin" className="font-semibold text-primary underline underline-offset-4">Sign in</Link>, then open this link again.
+            <Link href="/signin" className="font-semibold text-primary hover:text-accent">Sign In</Link>, then open this link again.
           </p>
         </>
       )}

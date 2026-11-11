@@ -17,7 +17,7 @@ export default function InviteAcceptForm({ token }: { token: string }) {
       )}
       <ConsentNote action="creating this account" />
       <button type="submit" disabled={pending} className="h-12 w-full rounded-md bg-primary text-base font-semibold text-primary-foreground hover:bg-accent active:translate-y-px disabled:opacity-60">
-        {pending ? "One moment…" : "Create evaluator account"}
+        {pending ? "One Moment…" : "Create Evaluator Account"}
       </button>
     </form>
   );

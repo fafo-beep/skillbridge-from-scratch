@@ -6,7 +6,7 @@ import { db, dbConfigured } from "@/lib/db";
 import { resendVerification, toggleLesson } from "@/lib/actions";
 import PortfolioStatus from "@/components/PortfolioStatus";
 
-export const metadata: Metadata = { title: "My learning" };
+export const metadata: Metadata = { title: "My Learning" };
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Draft: keep documenting",
@@ -28,7 +28,7 @@ export default async function DashboardPage({
   if (!session?.user?.id) {
     return (
       <div className="mx-auto max-w-md px-6 py-16">
-        <h1 className="text-4xl font-bold leading-tight">My learning</h1>
+        <h1 className="text-4xl font-bold leading-tight">My Learning</h1>
         <p className="mt-3 leading-relaxed">
           Sign in to see your courses, progress, and credit portfolios.
         </p>
@@ -37,13 +37,13 @@ export default async function DashboardPage({
             href="/signin"
             className="rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
           >
-            Sign in
+            Sign In
           </Link>
           <Link
             href="/join"
             className="rounded-md bg-secondary px-6 py-3 font-semibold text-secondary-foreground hover:bg-muted active:translate-y-px"
           >
-            Join free
+            Join Free
           </Link>
         </div>
         {!dbConfigured && (
@@ -78,13 +78,13 @@ export default async function DashboardPage({
   return (
     <div className="mx-auto max-w-6xl px-6 py-14">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <h1 className="text-4xl font-bold leading-tight">My learning</h1>
+        <h1 className="text-4xl font-bold leading-tight">My Learning</h1>
         <div className="flex flex-wrap items-baseline gap-5 text-sm font-semibold">
           {me?.premium ? (
             <span className="text-secondary-foreground">Full plan</span>
           ) : (
-            <Link href="/upgrade" className="text-primary underline underline-offset-4">
-              Free plan · upgrade
+            <Link href="/upgrade" className="text-primary hover:text-accent">
+              Free Plan · Upgrade
             </Link>
           )}
         </div>
@@ -108,7 +108,7 @@ export default async function DashboardPage({
           </p>
           <form action={resendVerification} className="mt-3">
             <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-              Resend the link
+              Resend the Link
             </button>
           </form>
         </div>
@@ -125,14 +125,14 @@ export default async function DashboardPage({
             href="/catalog"
             className="mt-6 inline-block rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
           >
-            Browse the catalog
+            Browse the Catalog
           </Link>
         </div>
       )}
 
       {portfolios.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-2xl font-bold">Credit portfolios</h2>
+          <h2 className="text-2xl font-bold">Credit Portfolios</h2>
           <div className="mt-5 space-y-4">
             {portfolios.map((p) => (
               <div key={p.id} className="rounded-lg bg-card p-6">
@@ -145,9 +145,9 @@ export default async function DashboardPage({
                   </div>
                   <Link
                     href={`/portfolio/${p.id}`}
-                    className="font-semibold text-primary underline underline-offset-4"
+                    className="font-semibold text-primary hover:text-accent"
                   >
-                    Open portfolio
+                    Open Portfolio
                   </Link>
                 </div>
                 <p className="sr-only">
@@ -190,9 +190,9 @@ export default async function DashboardPage({
                     </div>
                     <Link
                       href={`/courses/${e.course.slug}`}
-                      className="font-semibold text-primary underline underline-offset-4"
+                      className="font-semibold text-primary hover:text-accent"
                     >
-                      Course page
+                      Course Page
                     </Link>
                   </div>
 
@@ -238,8 +238,8 @@ export default async function DashboardPage({
                                 <span className="flex shrink-0 items-center gap-4">
                                   <span className="text-muted-foreground">{l.minutes} min</span>
                                   <form action={toggleLesson.bind(null, l.id)}>
-                                    <button className="font-semibold text-primary underline underline-offset-4">
-                                      {done ? "Undo" : "Mark done"}
+                                    <button className="font-semibold text-primary hover:text-accent">
+                                      {done ? "Undo" : "Mark Done"}
                                     </button>
                                   </form>
                                 </span>

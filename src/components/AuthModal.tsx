@@ -83,7 +83,7 @@ function ErrorNote({ state, onSwitch }: { state: FormState; onSwitch?: () => voi
       {offer && (
         <>
           {" "}
-          <button type="button" onClick={onSwitch} className="text-primary underline underline-offset-4">
+          <button type="button" onClick={onSwitch} className="text-primary hover:text-accent">
             {offer}
           </button>
         </>
@@ -102,16 +102,16 @@ function SignInForm({ onSwitch }: { onSwitch: () => void }) {
       </div>
       <PasswordField id="modal-password" mode="current" />
       <p className="text-sm">
-        <a href="/forgot" className="font-semibold text-primary underline underline-offset-4">Forgot your password?</a>
+        <a href="/forgot" className="font-semibold text-primary hover:text-accent">Forgot Your Password?</a>
       </p>
       <ErrorNote state={state} onSwitch={onSwitch} />
       <button type="submit" disabled={pending} className={primaryBtn}>
-        {pending ? "One moment" : "Sign in"}
+        {pending ? "One Moment" : "Sign In"}
       </button>
       <p className="pt-2 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <button type="button" onClick={onSwitch} className="font-semibold text-primary underline underline-offset-4">
-          Create a free account
+        <button type="button" onClick={onSwitch} className="font-semibold text-primary hover:text-accent">
+          Create a Free Account
         </button>
       </p>
     </form>
@@ -131,12 +131,12 @@ function JoinForm({ onSwitch }: { onSwitch: () => void }) {
       <ErrorNote state={state} onSwitch={onSwitch} />
       <ConsentNote />
       <button type="submit" disabled={pending} className={primaryBtn}>
-        {pending ? "One moment" : "Create free account"}
+        {pending ? "One Moment" : "Create Free Account"}
       </button>
       <p className="pt-2 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <button type="button" onClick={onSwitch} className="font-semibold text-primary underline underline-offset-4">
-          Sign in
+        <button type="button" onClick={onSwitch} className="font-semibold text-primary hover:text-accent">
+          Sign In
         </button>
       </p>
     </form>

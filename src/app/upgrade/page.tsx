@@ -93,8 +93,8 @@ export default async function UpgradePage({
         className="mt-12 w-full rounded-lg object-cover"
       />
       <p className="mt-8">
-        <Link href="/dashboard" className="font-semibold text-primary underline underline-offset-4">
-          Back to my learning
+        <Link href="/dashboard" className="font-semibold text-primary hover:text-accent">
+          Back to My Learning
         </Link>
       </p>
     </div>

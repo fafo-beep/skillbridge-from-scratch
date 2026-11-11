@@ -67,16 +67,16 @@ export default async function ReviewDashboardPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-14">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
-        <h1 className="text-4xl font-bold leading-tight">Evaluator dashboard</h1>
+        <h1 className="text-4xl font-bold leading-tight">Evaluator Dashboard</h1>
         <div className="flex flex-wrap items-baseline gap-5 text-sm font-semibold">
           {viewer.role === "ADMIN" && (
-            <Link href="/admin" className="text-primary underline underline-offset-4">
+            <Link href="/admin" className="text-primary hover:text-accent">
               Admin
             </Link>
           )}
           <form action={logout}>
-            <button className="text-primary underline underline-offset-4">
-              Sign out ({viewer.name})
+            <button className="text-primary hover:text-accent">
+              Sign Out ({viewer.name})
             </button>
           </form>
         </div>
@@ -93,7 +93,7 @@ export default async function ReviewDashboardPage() {
 
       {mine.length > 0 && (
         <section className="mt-12">
-          <h2 className="text-2xl font-bold">In your review</h2>
+          <h2 className="text-2xl font-bold">In Your Review</h2>
           <ul className="mt-4 space-y-3">
             {mine.map((p) => (
               <li key={p.id} className="rounded-lg bg-card p-5">
@@ -105,12 +105,12 @@ export default async function ReviewDashboardPage() {
                     <p className="mt-0.5 text-lg font-bold">{p.course.title}</p>
                   </div>
                   <span className="flex items-baseline gap-5">
-                    <Link href={`/portfolio/${p.id}`} className="font-semibold text-primary underline underline-offset-4">
-                      Continue evaluation
+                    <Link href={`/portfolio/${p.id}`} className="font-semibold text-primary hover:text-accent">
+                      Continue Evaluation
                     </Link>
                     <form action={releaseReview.bind(null, p.id)}>
-                      <button className="text-sm font-semibold text-muted-foreground underline underline-offset-4 hover:text-primary">
-                        Return to queue
+                      <button className="text-sm font-semibold text-muted-foreground hover:text-accent hover:text-primary">
+                        Return to Queue
                       </button>
                     </form>
                   </span>
@@ -122,7 +122,7 @@ export default async function ReviewDashboardPage() {
       )}
 
       <section className="mt-12">
-        <h2 className="text-2xl font-bold">Waiting for an evaluator</h2>
+        <h2 className="text-2xl font-bold">Waiting for an Evaluator</h2>
         {queue.length === 0 ? (
           <p className="mt-4 rounded-lg bg-card p-6 text-muted-foreground">Nothing waiting right now.</p>
         ) : (
@@ -138,7 +138,7 @@ export default async function ReviewDashboardPage() {
                   </div>
                   <form action={startReview.bind(null, p.id)}>
                     <button className="rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-                      Start evaluation
+                      Start Evaluation
                     </button>
                   </form>
                 </div>
@@ -173,7 +173,7 @@ export default async function ReviewDashboardPage() {
                   <span className={`font-semibold ${p.status === "APPROVED" ? "text-success" : p.status === "DENIED" ? "text-destructive" : "text-secondary-foreground"}`}>
                     {DECISION[p.status] ?? p.status}{p.score != null ? ` · ${p.score}/5` : ""}
                   </span>
-                  <Link href={`/portfolio/${p.id}`} className="text-sm font-semibold text-primary underline underline-offset-4">
+                  <Link href={`/portfolio/${p.id}`} className="text-sm font-semibold text-primary hover:text-accent">
                     Open
                   </Link>
                 </div>

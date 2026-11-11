@@ -22,7 +22,7 @@ export default function EvaluatorsPage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signin" className="rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-                Evaluator sign in
+                Evaluator Sign In
               </Link>
             </div>
           </div>

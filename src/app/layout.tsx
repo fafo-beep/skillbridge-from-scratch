@@ -47,7 +47,7 @@ async function viewer() {
   const user = await db.user.findUnique({ where: { id }, select: { firstName: true, name: true, role: true } });
   if (!user) return null;
   const home = user.role === "ADMIN" ? "/admin" : user.role === "REVIEWER" ? "/review" : "/dashboard";
-  const label = user.role === "ADMIN" ? "Admin" : user.role === "REVIEWER" ? "Evaluations" : "My learning";
+  const label = user.role === "ADMIN" ? "Admin" : user.role === "REVIEWER" ? "Evaluations" : "My Learning";
   return { first: user.firstName || user.name?.split(" ")[0] || "Account", home, label };
 }
 
@@ -95,14 +95,14 @@ async function Header() {
               </span>
               <form action={logout}>
                 <button type="submit" className="rounded-md bg-secondary px-4 py-2 font-semibold text-secondary-foreground hover:bg-muted active:translate-y-px">
-                  Sign out
+                  Sign Out
                 </button>
               </form>
             </>
           ) : (
             <>
               <Link href="/dashboard" className="hidden hover:text-primary md:inline">
-                My learning
+                My Learning
               </Link>
               <AuthLauncher providers={[...oauthProviders]} />
             </>
@@ -122,10 +122,10 @@ function Footer() {
           <nav aria-label="Explore">
             <p className="font-bold">Explore</p>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><Link href="/catalog" className="hover:underline">Course catalog</Link></li>
-              <li><Link href="/dashboard" className="hover:underline">My learning</Link></li>
-              <li><Link href="/catalog" className="hover:underline">Start a credit check</Link></li>
-              <li><Link href="/evaluators" className="hover:underline">For evaluators</Link></li>
+              <li><Link href="/catalog" className="hover:text-primary">Course Catalog</Link></li>
+              <li><Link href="/dashboard" className="hover:text-primary">My Learning</Link></li>
+              <li><Link href="/catalog" className="hover:text-primary">Start a Credit Check</Link></li>
+              <li><Link href="/evaluators" className="hover:text-primary">For Evaluators</Link></li>
             </ul>
           </nav>
           <nav aria-label="Fields">
@@ -133,7 +133,7 @@ function Footer() {
             <ul className="mt-3 space-y-2 text-sm">
               {CATEGORIES.map((c) => (
                 <li key={c.slug}>
-                  <Link href={`/catalog?category=${c.slug}`} className="hover:underline">
+                  <Link href={`/catalog?category=${c.slug}`} className="hover:text-primary">
                     {c.name}
                   </Link>
                 </li>
@@ -145,7 +145,7 @@ function Footer() {
             <ul className="mt-3 space-y-2 text-sm">
               {COURSES.map((c) => (
                 <li key={c.slug}>
-                  <Link href={`/courses/${c.slug}`} className="hover:underline">
+                  <Link href={`/courses/${c.slug}`} className="hover:text-primary">
                     {c.title}
                   </Link>
                 </li>
@@ -159,9 +159,9 @@ function Footer() {
         <div className="mt-8 flex flex-wrap items-baseline justify-between gap-3 text-sm">
           <p>Courses, and credit for what you already know.</p>
           <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-1">
-            <Link href="/terms" className="hover:underline">Terms</Link>
-            <Link href="/acceptable-use" className="hover:underline">Acceptable Use</Link>
-            <Link href="/privacy" className="hover:underline">Privacy</Link>
+            <Link href="/terms" className="hover:text-primary">Terms</Link>
+            <Link href="/acceptable-use" className="hover:text-primary">Acceptable Use</Link>
+            <Link href="/privacy" className="hover:text-primary">Privacy</Link>
           </nav>
         </div>
         <p className="mt-4 text-sm">Only colleges award credit. Check your school&apos;s PLA policy.</p>

@@ -17,7 +17,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ token: 
           use &quot;Resend&quot; on your dashboard to get a fresh one.
         </p>
         <Link href="/dashboard" className="mt-8 inline-block rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-          Go to my learning
+          Go to My Learning
         </Link>
       </div>
     );
@@ -31,7 +31,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ token: 
       </p>
       <form action={confirmVerification.bind(null, token)} className="mt-8">
         <button className="rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-          Confirm my email
+          Confirm My Email
         </button>
       </form>
     </div>

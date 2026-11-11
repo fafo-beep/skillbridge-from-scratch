@@ -15,14 +15,14 @@ export default function AuthLauncher({ providers }: { providers: string[] }) {
   return (
     <>
       <button type="button" onClick={() => launch("signin")} className="font-semibold hover:text-primary">
-        Sign in
+        Sign In
       </button>
       <button
         type="button"
         onClick={() => launch("join")}
         className="rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
       >
-        Join free
+        Join Free
       </button>
       <AuthModal providers={providers} open={open} mode={mode} onModeChange={setMode} onClose={() => setOpen(false)} />
     </>

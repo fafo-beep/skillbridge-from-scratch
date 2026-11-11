@@ -200,7 +200,7 @@ export default function EvidenceUpload({ portfolioId, outcomeId, mode, accept, m
                   {phase.kind === "done" && "Attached"}
                 </span>
                 {phase.kind === "uploading" && (
-                  <button type="button" onClick={() => abort.current?.abort()} className="font-semibold text-primary underline underline-offset-4">
+                  <button type="button" onClick={() => abort.current?.abort()} className="font-semibold text-primary hover:text-accent">
                     Cancel
                   </button>
                 )}

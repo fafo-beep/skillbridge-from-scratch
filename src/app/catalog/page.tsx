@@ -61,7 +61,7 @@ export default async function CatalogPage({
               : "bg-secondary text-secondary-foreground hover:bg-muted"
           }`}
         >
-          All fields
+          All Fields
         </Link>
         {CATEGORIES.map((c) => (
           <Link
@@ -89,7 +89,7 @@ export default async function CatalogPage({
           <p className="font-bold">No courses match that search.</p>
           <p className="mt-1 text-muted-foreground">
             Try a broader term, or browse{" "}
-            <Link href="/catalog" className="font-semibold text-primary underline underline-offset-4">
+            <Link href="/catalog" className="font-semibold text-primary hover:text-accent">
               the full catalog
             </Link>
             .

@@ -36,7 +36,7 @@ export default async function UpgradeSuccessPage({
         href="/dashboard"
         className="mt-8 inline-block rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
       >
-        Go to my learning
+        Go to My Learning
       </Link>
     </div>
   );

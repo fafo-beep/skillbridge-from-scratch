@@ -29,7 +29,7 @@ export default function InviteForm() {
           disabled={pending}
           className="h-11 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-accent active:translate-y-px disabled:opacity-60"
         >
-          {pending ? "Creating…" : "Create invitation"}
+          {pending ? "Creating…" : "Create Invitation"}
         </button>
       </div>
       {state.error && (

@@ -92,7 +92,7 @@ export default function HomePage() {
                 href="/catalog"
                 className="inline-block rounded-md bg-primary px-8 py-4 text-base font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
               >
-                Browse the catalog
+                Browse the Catalog
               </Link>
               <p className="mt-3 text-sm text-muted-foreground">
                 Free to join. No card needed.
@@ -180,9 +180,9 @@ export default function HomePage() {
           <p className="mt-8">
             <Link
               href="/catalog"
-              className="font-semibold text-primary underline underline-offset-4"
+              className="font-semibold text-primary hover:text-accent"
             >
-              See the full catalog
+              See the Full Catalog
             </Link>
           </p>
         </div>

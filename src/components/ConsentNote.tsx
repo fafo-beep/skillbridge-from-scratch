@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export default function ConsentNote({ action = "signing up" }: { action?: string }) {
-  const link = "font-semibold text-primary underline underline-offset-4";
+  const link = "font-semibold text-primary hover:text-accent";
   return (
     <p className="text-sm leading-relaxed text-muted-foreground">
       By {action}, you agree to our{" "}

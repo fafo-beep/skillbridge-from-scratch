@@ -42,8 +42,8 @@ export default function AuthForm({
           {state.noAccount && (
             <>
               {" "}
-              <a href="/join" className="text-primary underline underline-offset-4">
-                Create a free account
+              <a href="/join" className="text-primary hover:text-accent">
+                Create a Free Account
               </a>
             </>
           )}
@@ -55,7 +55,7 @@ export default function AuthForm({
         disabled={pending}
         className="h-12 w-full rounded-md bg-primary text-base font-semibold text-primary-foreground hover:bg-accent active:translate-y-px disabled:opacity-60"
       >
-        {pending ? "One moment…" : mode === "join" ? "Create free account" : "Sign in"}
+        {pending ? "One Moment…" : mode === "join" ? "Create Free Account" : "Sign In"}
       </button>
     </form>
   );
