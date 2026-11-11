@@ -235,6 +235,7 @@ model Portfolio {
   score        Int?
   decisionNote String            @default("")
   evaluatorId  String?
+  submittedAt  DateTime?
   decidedAt    DateTime?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt

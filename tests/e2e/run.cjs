@@ -215,7 +215,8 @@ async function documentOutcomes(page, count, story) {
   if (badType.status() !== 400 || spoofed.status() !== 400) throw new Error(`type checks: ${badType.status()} ${spoofed.status()}`);
   ok("html upload and html-disguised-as-pdf both refused");
   await L.click('button:has-text("Submit portfolio")');
-  await L.waitForSelector("text=Submitted: waiting for an evaluator", { timeout: 20000 });
+  await L.waitForSelector('h2:has-text("Submitted")', { timeout: 20000 });
+  await L.waitForSelector("text=Your portfolio is in the queue");
   ok("submitted (first evaluation is free)");
   await L.goto(BASE + "/review");
   await L.waitForURL("**/dashboard", { timeout: 20000 });
@@ -250,7 +251,9 @@ async function documentOutcomes(page, count, story) {
   ok("decision recorded, shows in Completed");
 
   await L.goto(BASE + "/dashboard");
-  await L.waitForSelector("text=Approved: credit recommended · 3 credits · score 5/5");
+  await L.waitForSelector("text=3 credits · score 5 of 5");
+  const decisionMail = await pg.query(`select count(*)::int as n from "Email" where "to"=$1 and subject like 'Credit recommended for %'`, [learnerEmail]);
+  if (decisionMail.rows[0].n !== 1) throw new Error("decision email not sent: " + decisionMail.rows[0].n);
   ok("learner sees approval");
 
   // ── 4. Premium gate and Stripe webhook ────────────────────────────
@@ -306,7 +309,7 @@ async function documentOutcomes(page, count, story) {
   await L.waitForSelector("text=You're on the full plan.");
   await L.goto(builderUrl);
   await L.click('button:has-text("Submit portfolio")');
-  await L.waitForSelector("text=Submitted: waiting for an evaluator", { timeout: 30000 });
+  await L.waitForSelector('h2:has-text("Submitted")', { timeout: 30000 });
   ok("submission allowed after verified payment");
   const { rows: pf } = await pg.query(`select p.id from "Portfolio" p join "Course" c on c.id=p."courseId" where p."userId"=$1 and c.code='BUS110'`, [userId]);
   const pdfRes = await L.request.get(BASE + `/api/portfolio/${pf[0].id}/pdf`);

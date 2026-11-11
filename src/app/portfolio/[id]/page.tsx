@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { ACCEPT_ATTR, MAX_UPLOAD_BYTES, storageMode } from "@/lib/storage";
 import EvidenceUpload from "@/components/EvidenceUpload";
+import PortfolioStatus from "@/components/PortfolioStatus";
 import {
   addEvidence,
   decidePortfolio,
@@ -94,11 +95,16 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
         {!isOwner && <> · {portfolio.user.name} ({portfolio.user.email})</>}
       </p>
       <h1 className="mt-1 text-4xl font-bold leading-tight">{portfolio.course.title}</h1>
-      <p className="mt-3 text-lg font-semibold text-secondary-foreground">
-        {STATUS_LINE[portfolio.status] ?? portfolio.status}
-      </p>
+      <p className="sr-only">{STATUS_LINE[portfolio.status] ?? portfolio.status}</p>
+      <PortfolioStatus
+        status={portfolio.status}
+        submittedAt={portfolio.submittedAt}
+        decidedAt={portfolio.decidedAt}
+        credits={portfolio.course.credits}
+        score={portfolio.score}
+      />
       {decided && (isOwner ? viewer?.premium : true) && (
-        <p className="mt-3">
+        <p className="mt-4">
           <a
             href={`/api/portfolio/${portfolio.id}/pdf`}
             className="inline-block rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px"
@@ -120,15 +126,8 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
         portfolio.status === "REVISIONS_REQUESTED") &&
         portfolio.decisionNote && (
           <div className="mt-6 rounded-lg bg-card p-6">
-            {portfolio.score != null && (
-              <p className="text-2xl font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {portfolio.status === "APPROVED"
-                  ? `${portfolio.course.credits} credits recommended · score ${portfolio.score}/5`
-                  : `Score ${portfolio.score}/5`}
-              </p>
-            )}
-            <p className="mt-2 leading-relaxed">&quot;{portfolio.decisionNote}&quot;</p>
-            <p className="mt-2 text-sm text-muted-foreground">The evaluator&apos;s note</p>
+            <p className="text-sm font-semibold text-muted-foreground">The evaluator&apos;s note</p>
+            <p className="mt-2 text-lg leading-relaxed">&quot;{portfolio.decisionNote}&quot;</p>
           </div>
         )}
 

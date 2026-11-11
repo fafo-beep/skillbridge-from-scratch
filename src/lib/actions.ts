@@ -396,6 +396,7 @@ export async function submitPortfolio(portfolioId: string) {
       where: { id: portfolioId },
       data: {
         status: "SUBMITTED",
+        submittedAt: new Date(),
         // A resubmission starts a fresh evaluation: previous decision cleared.
         score: null,
         decisionNote: "",
@@ -456,10 +457,44 @@ export async function decidePortfolio(portfolioId: string, formData: FormData) {
   });
   if (updated.count > 0) {
     await audit(reviewerId, "review.decide", portfolioId, `${status} score=${score}`);
+    await notifyDecision(portfolioId, status);
   }
   revalidatePath(`/portfolio/${portfolioId}`);
   revalidatePath("/review");
   redirect("/review");
+}
+
+// The learner hears about a decision by email, with a link back to the
+// portfolio. The note itself stays on the page, behind sign-in.
+async function notifyDecision(portfolioId: string, status: "APPROVED" | "DENIED" | "REVISIONS_REQUESTED") {
+  try {
+    const p = await db.portfolio.findUnique({
+      where: { id: portfolioId },
+      include: { user: { select: { email: true, firstName: true, name: true } }, course: { select: { code: true, title: true, credits: true } } },
+    });
+    if (!p) return;
+    const origin = await siteOrigin();
+    const first = p.user.firstName || p.user.name?.split(" ")[0] || "there";
+    const line =
+      status === "APPROVED"
+        ? `Credit recommended: ${p.course.credits} credits for ${p.course.code} ${p.course.title}.`
+        : status === "DENIED"
+          ? `Your portfolio for ${p.course.code} ${p.course.title} was not approved.`
+          : `The evaluator has asked for revisions to your portfolio for ${p.course.code} ${p.course.title}.`;
+    await sendEmail(
+      p.user.email,
+      status === "APPROVED" ? `Credit recommended for ${p.course.code}` : `A decision on your ${p.course.code} portfolio`,
+      `Hi ${first},\n\n${line}\n\nThe evaluator's score and note are on your portfolio page:\n\n${origin}/portfolio/${p.id}\n\n${
+        status === "APPROVED"
+          ? "The full plan includes the portfolio as a PDF to take to your college's registrar."
+          : status === "REVISIONS_REQUESTED"
+            ? "Update the outcomes the note names and submit again whenever you are ready."
+            : "You can start a portfolio for another course at any time."
+      }`
+    );
+  } catch {
+    // A missing email must never block the decision itself.
+  }
 }
 
 // Puts a claimed case back in the open queue. A reviewer may release their

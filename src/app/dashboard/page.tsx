@@ -3,7 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
-import { logout, resendVerification, toggleLesson } from "@/lib/actions";
+import { resendVerification, toggleLesson } from "@/lib/actions";
+import PortfolioStatus from "@/components/PortfolioStatus";
 
 export const metadata: Metadata = { title: "My learning" };
 
@@ -86,11 +87,6 @@ export default async function DashboardPage({
               Free plan · upgrade
             </Link>
           )}
-          <form action={logout}>
-            <button className="text-primary underline underline-offset-4">
-              Sign out ({session.user.name ?? session.user.email})
-            </button>
-          </form>
         </div>
       </div>
 
@@ -154,11 +150,19 @@ export default async function DashboardPage({
                     Open portfolio
                   </Link>
                 </div>
-                <p className="mt-3 font-semibold text-secondary-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <p className="sr-only">
                   {p.status === "APPROVED" && p.score != null
                     ? `${STATUS_LABEL[p.status]} · ${p.course.credits} credits · score ${p.score}/5`
                     : STATUS_LABEL[p.status] ?? p.status}
                 </p>
+                <PortfolioStatus
+                  status={p.status}
+                  submittedAt={p.submittedAt}
+                  decidedAt={p.decidedAt}
+                  credits={p.course.credits}
+                  score={p.score}
+                  compact
+                />
               </div>
             ))}
           </div>
