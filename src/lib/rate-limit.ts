@@ -17,10 +17,13 @@ export const LIMITS = {
   verifyResend: { limit: 3, windowSec: 60 * 60 },
 } as const satisfies Record<string, Limit>;
 
-export async function clientIp(): Promise<string> {
-  const h = await headers();
+export function ipFromHeaders(h: Headers): string {
   const fwd = h.get("x-forwarded-for") ?? "";
   return fwd.split(",")[0].trim() || h.get("x-real-ip") || "unknown";
+}
+
+export async function clientIp(): Promise<string> {
+  return ipFromHeaders(await headers());
 }
 
 // Returns null when allowed, otherwise the number of seconds until the
@@ -37,10 +40,26 @@ export async function rateLimit(name: keyof typeof LIMITS, subject: string): Pro
       update: { count: { increment: 1 } },
       create: { key, window, count: 1 },
     });
+    // Housekeeping: now and then drop windows that can no longer matter,
+    // so the table stays small without a scheduler.
+    if (row.count === 1 && Math.random() < 0.02) {
+      await db.rateLimit.deleteMany({ where: { window: { lt: window - 1 } } });
+    }
     if (row.count > limit) return (window + 1) * windowSec - now;
     return null;
   } catch {
     return null;
+  }
+}
+
+// Forgets the current window for a subject, so a successful sign-in by
+// the real owner never counts toward locking that owner out.
+export async function clearRateLimit(name: keyof typeof LIMITS, subject: string): Promise<void> {
+  if (!dbConfigured) return;
+  try {
+    await db.rateLimit.deleteMany({ where: { key: `${name}:${subject}` } });
+  } catch {
+    // best effort
   }
 }
 

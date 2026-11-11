@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import Facebook from "next-auth/providers/facebook";
@@ -6,6 +6,19 @@ import Apple from "next-auth/providers/apple";
 import bcrypt from "bcryptjs";
 import { db, dbConfigured } from "@/lib/db";
 import { LEGAL } from "@/lib/legal";
+import { clearRateLimit, ipFromHeaders, rateLimit } from "@/lib/rate-limit";
+
+// Thrown by the credentials provider when the guess budget is spent. It
+// reaches the sign-in form's server action as-is, and the raw Auth.js
+// callback URL as ?error=CredentialsSignin&code=rate_limited.
+const EMAIL_SHAPE = /^[^\s@]{1,64}@[^\s@]{1,189}\.[^\s@]{2,}$/;
+
+export class RateLimited extends CredentialsSignin {
+  code = "rate_limited";
+  constructor(public wait: number) {
+    super();
+  }
+}
 
 // Auth.js v5. Email+password always; Google/Facebook/Apple appear
 // automatically when their AUTH_<PROVIDER>_ID/SECRET env vars are set.
@@ -37,16 +50,28 @@ function emailVerifiedByProvider(provider: string, profile: unknown): boolean {
 const providers = [
   Credentials({
     credentials: { email: {}, password: {} },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       if (!dbConfigured) return null;
       const email = String(credentials?.email ?? "").trim().toLowerCase();
       const password = String(credentials?.password ?? "");
-      if (!email || !password) return null;
+      if (!EMAIL_SHAPE.test(email) || !password || password.length > 200) return null;
+      // Guess budget lives here, not in the form action, because Auth.js
+      // also serves this provider at its own callback URL. Two limiters:
+      // per account+IP, and per account alone so rotating addresses do
+      // not unlock unlimited guesses.
+      const ip = ipFromHeaders(request.headers);
+      const wait =
+        (await rateLimit("login", `${email}|${ip}`)) ??
+        (await rateLimit("loginAccount", email));
+      if (wait) throw new RateLimited(wait);
       const user = await db.user.findUnique({ where: { email } });
       // A social-only account has no password; it must sign in via its provider.
       if (!user?.passwordHash) return null;
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return null;
+      // The owner got in: only failures should count toward a lockout.
+      await clearRateLimit("login", `${email}|${ip}`);
+      await clearRateLimit("loginAccount", email);
       return { id: user.id, email: user.email, name: user.name };
     },
   }),

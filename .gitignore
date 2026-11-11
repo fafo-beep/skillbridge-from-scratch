@@ -11,3 +11,4 @@ dist
 .taste-skill/
 
 /src/generated/prisma
+tsconfig.tsbuildinfo

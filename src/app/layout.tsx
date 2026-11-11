@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Source_Sans_3 } from "next/font/google";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { CATEGORIES, COURSES } from "@/lib/catalog";
 import { oauthProviders } from "@/auth";
 import AuthLauncher from "@/components/AuthLauncher";
@@ -134,11 +135,13 @@ function Footer() {
   );
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" className={sourceSans.variable} suppressHydrationWarning>
       <head>
         <script
+          nonce={nonce}
           // Applies the stored theme before first paint so there is no flash.
           dangerouslySetInnerHTML={{
             __html:

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { auth, signIn, signOut } from "@/auth";
+import { auth, signIn, signOut, RateLimited } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { consumeToken, issueToken } from "@/lib/tokens";
@@ -88,12 +88,8 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   if (!dbConfigured) return { error: "Accounts are not available yet on this deployment." };
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  // Two limiters: per account+IP, and per account alone so that spoofed
-  // or rotating client addresses cannot unlock unlimited guesses.
-  const wait =
-    (await rateLimit("login", `${email}|${await clientIp()}`)) ??
-    (await rateLimit("loginAccount", email));
-  if (wait) return { error: retryMessage(wait), email };
+  // Rate limiting happens inside the credentials provider (src/auth.ts),
+  // so the raw Auth.js callback URL is covered by the same budget.
   try {
     await signIn("credentials", { email, password, redirectTo: "/dashboard" });
   } catch (err) {
@@ -101,6 +97,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
     if (err && typeof err === "object" && "digest" in err && String(err.digest).startsWith("NEXT_REDIRECT")) {
       throw err;
     }
+    if (err instanceof RateLimited) return { error: retryMessage(err.wait), email };
     return { error: "Email or password is incorrect.", email };
   }
   return {};
@@ -160,12 +157,14 @@ export async function startPortfolio(courseSlug: string) {
   const userId = await requireUserId();
   const course = await db.course.findUnique({ where: { slug: courseSlug } });
   if (!course || !course.plaEligible) redirect("/catalog");
-  const existing = await db.portfolio.findFirst({
-    where: { userId, courseId: course.id },
-  });
-  if (!existing) {
+  // One portfolio per learner per course, enforced by a unique key so two
+  // parallel requests cannot produce two cases that get evaluated twice.
+  try {
     await db.portfolio.create({ data: { userId, courseId: course.id } });
     await audit(userId, "portfolio.create", course.slug);
+  } catch (err) {
+    const code = (err as { code?: string })?.code;
+    if (code !== "P2002") throw err;
   }
   revalidatePath("/dashboard");
   redirect("/dashboard");
@@ -374,6 +373,26 @@ export async function decidePortfolio(portfolioId: string, formData: FormData) {
   redirect("/review");
 }
 
+// Puts a claimed case back in the open queue. A reviewer may release their
+// own claim; an admin may release anyone's, so one evaluator can never
+// hold the whole queue hostage.
+export async function releaseReview(portfolioId: string) {
+  const actorId = await requireReviewer();
+  const actor = await db.user.findUnique({ where: { id: actorId }, select: { role: true } });
+  const updated = await db.portfolio.updateMany({
+    where: {
+      id: portfolioId,
+      status: "UNDER_REVIEW",
+      ...(actor?.role === "ADMIN" ? {} : { evaluatorId: actorId }),
+    },
+    data: { status: "SUBMITTED", evaluatorId: null },
+  });
+  if (updated.count > 0) await audit(actorId, "review.release", portfolioId);
+  revalidatePath("/review");
+  revalidatePath("/admin");
+  revalidatePath(`/portfolio/${portfolioId}`);
+}
+
 // ── Payments ─────────────────────────────────────────────────────────────
 // Checkout creates a pending Payment row and sends the user to Stripe.
 // Premium is granted only by the webhook (src/app/api/stripe/webhook).
@@ -387,11 +406,7 @@ export async function startCheckout() {
   if (!user) redirect("/signin");
   if (user.premium) redirect("/dashboard");
 
-  const { headers } = await import("next/headers");
-  const h = await headers();
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  const origin = await siteOrigin();
 
   const priceId = process.env.STRIPE_PRICE_ID;
   const session = await stripe().checkout.sessions.create({
@@ -461,11 +476,7 @@ export async function createInvite(_prev: InviteState, formData: FormData): Prom
     },
   });
   await audit(adminId, "invite.create", email, role);
-  const { headers } = await import("next/headers");
-  const h = await headers();
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  const origin = await siteOrigin();
   revalidatePath("/admin");
   return { link: `${origin}/invite/${token}`, email };
 }

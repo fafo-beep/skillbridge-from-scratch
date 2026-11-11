@@ -131,8 +131,10 @@ DATABASE_URL=... npm run make-admin -- you@example.com
 - "Forgot your password?" sends a one-hour, single-use reset link. Tokens
   are stored hashed and consumed atomically.
 - Email goes through Resend when `RESEND_API_KEY` (and `EMAIL_FROM`) are
-  set. Without them, every message is recorded in the `Email` table and
-  printed to the server log — how development and CI read the links.
+  set. With `EMAIL_OUTBOX=1` (development and CI only), every message is
+  instead recorded in the `Email` table and printed to the server log,
+  which is how the tests read the links. A deployment with neither sends
+  nothing and stores only a redacted record.
 - Rate limits (database-backed, so they hold on serverless): sign-in 10
   per account+IP per 15 min, sign-up 5 per IP per hour, email checks 30
   per IP per 15 min, reset requests 3 per hour.
@@ -143,9 +145,9 @@ DATABASE_URL=... npm run make-admin -- you@example.com
 
 The $99 one-time upgrade uses Stripe Checkout. Set `STRIPE_SECRET_KEY`
 and `STRIPE_WEBHOOK_SECRET`; register the webhook endpoint
-`https://<your-domain>/api/stripe/webhook` for `checkout.session.completed`
+`https://<your-domain>/api/stripe/webhook` for `checkout.session.completed`, `charge.refunded`, `charge.dispute.created`
 and `checkout.session.async_payment_succeeded`. Premium is granted only by
-that webhook after signature verification — the success redirect proves
+that webhook after signature verification; the success redirect proves
 nothing and grants nothing. Every checkout and verification is audited.
 
 Free tier: one portfolio evaluated. Premium: unlimited.

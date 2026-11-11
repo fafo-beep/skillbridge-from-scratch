@@ -40,8 +40,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const viewer = await db.user.findUnique({ where: { id: viewerId } });
   const isOwner = portfolio.userId === viewerId;
+  // Staff export the same cases they may read: an evaluator's own claimed
+  // or decided reviews. Admins share that scope; drafts and revisions in
+  // progress belong to the learner alone.
+  const staffVisible = ["UNDER_REVIEW", "APPROVED", "DENIED"].includes(portfolio.status);
   const isStaff =
-    (viewer?.role === "REVIEWER" && portfolio.evaluatorId === viewerId) || viewer?.role === "ADMIN";
+    !isOwner &&
+    staffVisible &&
+    ((viewer?.role === "REVIEWER" && portfolio.evaluatorId === viewerId) || viewer?.role === "ADMIN");
   if (!isOwner && !isStaff) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (isOwner && !viewer?.premium) return NextResponse.json({ error: "full plan required" }, { status: 402 });
 

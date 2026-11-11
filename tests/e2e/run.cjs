@@ -177,6 +177,14 @@ async function documentOutcomes(page, count, story) {
   await R.waitForURL("**/portfolio/**", { timeout: 30000 });
   await R.waitForSelector("text=Proposal template v4.docx");
   ok("reviewer sees portfolio and evidence");
+
+  // A claimed case can be returned to the queue, then claimed again.
+  await R.goto(BASE + "/review");
+  await R.locator("li", { hasText: learnerLast }).locator('button:has-text("Return to queue")').first().click();
+  await R.waitForSelector("text=Waiting for an evaluator");
+  await R.locator("li", { hasText: learnerLast }).locator('button:has-text("Start evaluation")').first().click();
+  await R.waitForURL("**/portfolio/**", { timeout: 30000 });
+  ok("claimed review returned to the queue and claimed again");
   await R.selectOption("#score", "5");
   await R.fill("#note", "Clear, well-evidenced writing portfolio. The proposal template and presentation history demonstrate each outcome at course level.");
   await R.click('button:has-text("Recommend credit")');
@@ -213,12 +221,29 @@ async function documentOutcomes(page, count, story) {
   let r = await fetch(url, { method: "POST", headers: { "stripe-signature": "t=1,v1=deadbeef" }, body: payload });
   if (r.status !== 400) throw new Error("bad signature accepted: " + r.status);
   ok("webhook rejects bad signature");
-  const sig = stripe.webhooks.generateTestHeaderString({ payload, secret: WEBHOOK_SECRET });
-  r = await fetch(url, { method: "POST", headers: { "stripe-signature": sig }, body: payload });
+  const signed = (p) => ({ method: "POST", headers: { "stripe-signature": stripe.webhooks.generateTestHeaderString({ payload: p, secret: WEBHOOK_SECRET }) }, body: p });
+  const premiumNow = async () => (await pg.query(`select premium from "User" where id=$1`, [userId])).rows[0].premium;
+
+  // A properly signed, paid session this app never created must grant nothing
+  // (Stripe sends every session in the account, Payment Links included).
+  r = await fetch(url, signed(payload));
+  if (r.status !== 200 || (await premiumNow())) throw new Error("unknown session granted premium");
+  ok("webhook ignores a paid session this app did not create");
+
+  await pg.query(`insert into "Payment" (id, "userId", "stripeSessionId", "amountUSD") values ($1, $2, $3, 99)`, [`pay_${stamp}`, userId, sessionId]);
+  const cheap = JSON.stringify({ id: `evt_cheap_${stamp}`, object: "event", type: "checkout.session.completed",
+    data: { object: { id: sessionId, object: "checkout.session", payment_status: "paid", amount_total: 500, currency: "usd", metadata: { userId } } } });
+  r = await fetch(url, signed(cheap));
+  if (r.status !== 200 || (await premiumNow())) throw new Error("underpaid session granted premium");
+  ok("webhook rejects a session paid below the plan price");
+
+  const paid = JSON.stringify({ id: `evt_${stamp}`, object: "event", type: "checkout.session.completed",
+    data: { object: { id: sessionId, object: "checkout.session", payment_status: "paid", amount_total: 9900, currency: "usd", payment_intent: `pi_${stamp}`, metadata: { userId } } } });
+  r = await fetch(url, signed(paid));
   if (r.status !== 200) throw new Error("webhook failed: " + r.status);
-  await fetch(url, { method: "POST", headers: { "stripe-signature": sig }, body: payload });
+  await fetch(url, signed(paid));
   const audits = await pg.query(`select count(*)::int as n from "AuditLog" where action='payment.verified' and target=$1`, [sessionId]);
-  if (audits.rows[0].n !== 1) throw new Error("webhook not idempotent: " + audits.rows[0].n);
+  if (audits.rows[0].n !== 1 || !(await premiumNow())) throw new Error("webhook not idempotent: " + audits.rows[0].n);
   ok("verified webhook grants premium once (idempotent)");
   await L.goto(BASE + `/upgrade/success?session_id=${sessionId}`);
   await L.waitForSelector("text=You're on the full plan.");
@@ -233,6 +258,14 @@ async function documentOutcomes(page, count, story) {
     throw new Error(`pdf export failed: ${pdfRes.status()} ${pdfRes.headers()["content-type"]}`);
   }
   ok(`approved portfolio exported as PDF (${pdfBody.length} bytes)`);
+
+  const refund = JSON.stringify({ id: `evt_refund_${stamp}`, object: "event", type: "charge.refunded",
+    data: { object: { id: `ch_${stamp}`, object: "charge", payment_intent: `pi_${stamp}`, refunded: true } } });
+  r = await fetch(url, signed(refund));
+  if (r.status !== 200 || (await premiumNow())) throw new Error("refund did not withdraw premium");
+  const revoked = await pg.query(`select count(*)::int as n from "AuditLog" where action='payment.revoked' and target=$1`, [sessionId]);
+  if (revoked.rows[0].n !== 1) throw new Error("refund not audited once: " + revoked.rows[0].n);
+  ok("refund webhook withdraws premium");
   if (process.env.PDF_OUT) require("fs").writeFileSync(process.env.PDF_OUT, pdfBody);
   const other = await M.request.get(BASE + `/api/portfolio/${pf[0].id}/pdf`);
   if (other.status() !== 404) throw new Error("another learner could reach the PDF: " + other.status());
@@ -305,6 +338,34 @@ async function documentOutcomes(page, count, story) {
   await signIn(T, target, "wrong-password-xx");
   await T.waitForSelector("text=Too many attempts");
   ok("11th failed sign-in in 15 minutes is blocked");
+
+  // The raw Auth.js callback URL shares the same budget: no side door.
+  const csrfRes = await T.request.get(BASE + "/api/auth/csrf");
+  const { csrfToken } = await csrfRes.json();
+  const raw = await T.request.post(BASE + "/api/auth/callback/credentials", {
+    form: { csrfToken, email: target, password: "wrong-password-xx" },
+    maxRedirects: 0,
+  });
+  const loc = raw.headers()["location"] ?? "";
+  if (raw.status() !== 302 || !loc.includes("code=rate_limited")) throw new Error(`raw callback not limited: ${raw.status()} ${loc}`);
+  ok("raw credentials callback is rate limited too");
+
+  // A correct sign-in by the owner clears the counter: an attacker cannot
+  // lock the real owner out by burning the account's budget.
+  const ownerEmail = `owner${stamp}@example.com`;
+  const O = await (await ctx()).newPage();
+  await register(O, "Own", "Er", ownerEmail);
+  await O.waitForURL("**/dashboard", { timeout: 30000 });
+  await O.goto(BASE + "/signin");
+  for (let i = 0; i < 9; i++) {
+    await signIn(O, ownerEmail, "wrong-password-xx");
+    await O.waitForSelector("text=Email or password is incorrect");
+  }
+  await signIn(O, ownerEmail, PASS);
+  await O.waitForURL("**/dashboard", { timeout: 30000 });
+  const left = await pg.query(`select coalesce(sum(count),0)::int as n from "RateLimit" where key like $1`, [`login%:${ownerEmail}%`]);
+  if (left.rows[0].n !== 0) throw new Error("owner sign-in did not clear the limiter: " + left.rows[0].n);
+  ok("owner's correct sign-in clears the guess counter");
 
   await pg.end();
   await browser.close();

@@ -162,11 +162,17 @@ model Course {
 }
 
 model Outcome {
-  id       String @id @default(cuid())
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id])
-  position Int
-  text     String
+  id        String            @id @default(cuid())
+  courseId  String
+  course    Course            @relation(fields: [courseId], references: [id])
+  position  Int
+  text      String
+  responses OutcomeResponse[]
+  evidence  Evidence[]
+
+  // The seed upserts by position, so ids survive every deploy and the
+  // narratives and evidence that point at them keep pointing at them.
+  @@unique([courseId, position])
 }
 
 model Module {
@@ -177,6 +183,8 @@ model Module {
   title    String
   summary  String
   lessons  Lesson[]
+
+  @@unique([courseId, position])
 }
 
 model Lesson {
@@ -187,6 +195,8 @@ model Lesson {
   title    String
   minutes  Int
   progress Progress[]
+
+  @@unique([moduleId, position])
 }
 
 model Enrollment {
@@ -230,6 +240,8 @@ model Portfolio {
   updatedAt    DateTime          @updatedAt
   responses    OutcomeResponse[]
   evidence     Evidence[]
+
+  @@unique([userId, courseId])
 }
 
 model OutcomeResponse {
@@ -237,6 +249,7 @@ model OutcomeResponse {
   portfolioId String
   portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
   outcomeId   String
+  outcome     Outcome   @relation(fields: [outcomeId], references: [id], onDelete: Restrict)
   narrative   String    @default("")
   updatedAt   DateTime  @updatedAt
 
@@ -248,6 +261,7 @@ model Evidence {
   portfolioId String
   portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
   outcomeId   String
+  outcome     Outcome   @relation(fields: [outcomeId], references: [id], onDelete: Restrict)
   title       String
   kind        String
   note        String    @default("")
@@ -259,9 +273,14 @@ model Payment {
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   stripeSessionId String   @unique
+  // Set by the webhook from the paid session, so a refund or dispute can
+  // be matched back to this row.
+  paymentIntentId String?  @unique
   amountUSD       Int
   // Set true only by the Stripe webhook handler after signature verification.
   verified        Boolean  @default(false)
+  // Set when Stripe reports a refund or a dispute; premium is withdrawn.
+  refundedAt      DateTime?
   createdAt       DateTime @default(now())
 }
 

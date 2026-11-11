@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
-import { logout, revokeInvite } from "@/lib/actions";
+import { logout, releaseReview, revokeInvite } from "@/lib/actions";
 import InviteForm from "@/components/InviteForm";
 
 export const metadata: Metadata = { title: "Admin" };
@@ -27,6 +27,12 @@ export default async function AdminPage() {
   ]);
   const load = new Map(evaluators.map((e) => [e.evaluatorId, e._count._all]));
   const verifiedPayments = await db.payment.count({ where: { verified: true } });
+  const claimed = await db.portfolio.findMany({
+    where: { status: "UNDER_REVIEW" },
+    include: { course: { select: { code: true, title: true } }, user: { select: { name: true } } },
+    orderBy: { updatedAt: "asc" },
+  });
+  const staffName = new Map(staff.map((u) => [u.id, u.name]));
   const errors = await db.errorLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 });
   const emailsSent = await db.email.count();
 
@@ -98,6 +104,30 @@ export default async function AdminPage() {
                 <p className="text-muted-foreground" style={{ fontVariantNumeric: "tabular-nums" }}>
                   {e.path || "n/a"} · {e.createdAt.toLocaleString("en-US")}
                 </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-bold">Under review</h2>
+        <p className="mt-2 text-muted-foreground">
+          Every case an evaluator has claimed. Return one to the queue if it has stalled.
+        </p>
+        {claimed.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">Nothing is claimed right now.</p>
+        ) : (
+          <ul className="mt-4 rounded-lg bg-card">
+            {claimed.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 py-3 odd:bg-background" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <span>
+                  <span className="font-semibold">{p.course.code} · {p.user.name}</span>
+                  <span className="text-muted-foreground"> · with {staffName.get(p.evaluatorId ?? "") ?? "an evaluator"} since {p.updatedAt.toISOString().slice(0, 10)}</span>
+                </span>
+                <form action={releaseReview.bind(null, p.id)}>
+                  <button className="text-sm font-semibold text-primary underline underline-offset-4">Return to queue</button>
+                </form>
               </li>
             ))}
           </ul>

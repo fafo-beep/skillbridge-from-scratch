@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
-import { logout, startReview } from "@/lib/actions";
+import { logout, releaseReview, startReview } from "@/lib/actions";
 
 export const metadata: Metadata = { title: "Evaluator dashboard" };
 
@@ -104,9 +104,16 @@ export default async function ReviewDashboardPage() {
                     </p>
                     <p className="mt-0.5 text-lg font-bold">{p.course.title}</p>
                   </div>
-                  <Link href={`/portfolio/${p.id}`} className="font-semibold text-primary underline underline-offset-4">
-                    Continue evaluation
-                  </Link>
+                  <span className="flex items-baseline gap-5">
+                    <Link href={`/portfolio/${p.id}`} className="font-semibold text-primary underline underline-offset-4">
+                      Continue evaluation
+                    </Link>
+                    <form action={releaseReview.bind(null, p.id)}>
+                      <button className="text-sm font-semibold text-muted-foreground underline underline-offset-4 hover:text-primary">
+                        Return to queue
+                      </button>
+                    </form>
+                  </span>
                 </div>
               </li>
             ))}

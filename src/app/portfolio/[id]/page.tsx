@@ -14,6 +14,7 @@ import {
 export const metadata: Metadata = { title: "Credit portfolio" };
 
 const MIN_NARRATIVE = 50;
+const STAFF_VISIBLE = new Set(["UNDER_REVIEW", "APPROVED", "DENIED"]);
 const EDITABLE = new Set(["DRAFT", "REVISIONS_REQUESTED"]);
 const STATUS_LINE: Record<string, string> = {
   DRAFT: "Draft: document each outcome, then submit",
@@ -50,11 +51,13 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   const hasReviewerRole = viewer?.role === "REVIEWER" || viewer?.role === "ADMIN";
   // A reviewer sees only what the role needs: the open queue (SUBMITTED)
   // and their own claimed or decided reviews, never drafts, revisions in
-  // progress, or another evaluator's case.
+  // progress, or another evaluator's case. While revisions are requested
+  // the learner is editing, and the evaluator waits for the resubmission.
   const isReviewer =
     hasReviewerRole &&
     !isOwner &&
-    (portfolio.status === "SUBMITTED" || portfolio.evaluatorId === viewerId);
+    (portfolio.status === "SUBMITTED" ||
+      (portfolio.evaluatorId === viewerId && STAFF_VISIBLE.has(portfolio.status)));
   if (!isOwner && !isReviewer) notFound();
 
   const editable = isOwner && EDITABLE.has(portfolio.status);

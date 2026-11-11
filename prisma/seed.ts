@@ -49,40 +49,43 @@ async function main() {
       },
     });
 
-    // Rebuild outcomes/modules/lessons for the course (content is source-of-truth)
-    await prisma.progress.deleteMany({
-      where: { lesson: { module: { courseId: record.id } } },
-    });
-    await prisma.lesson.deleteMany({ where: { module: { courseId: record.id } } });
-    await prisma.module.deleteMany({ where: { courseId: record.id } });
-    await prisma.outcome.deleteMany({ where: { courseId: record.id } });
-
-    await prisma.outcome.createMany({
-      data: course.outcomes.map((text, i) => ({
-        courseId: record.id,
-        position: i,
-        text,
-      })),
-    });
+    // Outcomes, modules and lessons are upserted by position so their ids
+    // are stable across deploys. Portfolio narratives and evidence point
+    // at outcome ids; lesson progress points at lesson ids. Rows beyond
+    // the catalog's length are removed, and the Restrict relations make
+    // the seed fail loudly rather than orphan a learner's work.
+    for (let i = 0; i < course.outcomes.length; i++) {
+      await prisma.outcome.upsert({
+        where: { courseId_position: { courseId: record.id, position: i } },
+        update: { text: course.outcomes[i] },
+        create: { courseId: record.id, position: i, text: course.outcomes[i] },
+      });
+    }
+    await prisma.outcome.deleteMany({ where: { courseId: record.id, position: { gte: course.outcomes.length } } });
 
     for (let m = 0; m < course.modules.length; m++) {
       const mod = course.modules[m];
-      await prisma.module.create({
-        data: {
-          courseId: record.id,
-          position: m,
-          title: mod.title,
-          summary: mod.summary,
-          lessons: {
-            create: mod.lessons.map((l, i) => ({
-              position: i,
-              title: l.title,
-              minutes: l.minutes,
-            })),
-          },
-        },
+      const moduleRow = await prisma.module.upsert({
+        where: { courseId_position: { courseId: record.id, position: m } },
+        update: { title: mod.title, summary: mod.summary },
+        create: { courseId: record.id, position: m, title: mod.title, summary: mod.summary },
       });
+      for (let i = 0; i < mod.lessons.length; i++) {
+        const l = mod.lessons[i];
+        await prisma.lesson.upsert({
+          where: { moduleId_position: { moduleId: moduleRow.id, position: i } },
+          update: { title: l.title, minutes: l.minutes },
+          create: { moduleId: moduleRow.id, position: i, title: l.title, minutes: l.minutes },
+        });
+      }
+      const extra = { moduleId: moduleRow.id, position: { gte: mod.lessons.length } };
+      await prisma.progress.deleteMany({ where: { lesson: extra } });
+      await prisma.lesson.deleteMany({ where: extra });
     }
+    const extraModules = { courseId: record.id, position: { gte: course.modules.length } };
+    await prisma.progress.deleteMany({ where: { lesson: { module: extraModules } } });
+    await prisma.lesson.deleteMany({ where: { module: extraModules } });
+    await prisma.module.deleteMany({ where: extraModules });
   }
 
   // Dev/test reviewer — requires BOTH an explicit flag and an explicit
