@@ -114,8 +114,31 @@ export default function EvidenceUpload({ portfolioId, outcomeId, mode, accept, m
           }
         });
       } catch (err) {
-        if ((err as Error).name === "AbortError") setPhase({ kind: "idle" });
-        else setPhase({ kind: "error", message: friendly((err as Error).message) });
+        if ((err as Error).name === "AbortError") {
+          setPhase({ kind: "idle" });
+        } else {
+          let detail = (err as Error).message || String(err);
+          // The Blob SDK hides the server's reason when the token request
+          // fails; ask the route again and show what it actually said.
+          if (/retrieve the client token/i.test(detail)) {
+            try {
+              const res = await fetch("/api/evidence/upload", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  type: "blob.generate-client-token",
+                  payload: { pathname: `evidence/${portfolioId}/${outcomeId}/${file.name.replace(/[^A-Za-z0-9._-]+/g, "-")}`, multipart: false, clientPayload: JSON.stringify({ portfolioId, outcomeId }) },
+                }),
+              });
+              const json = (await res.json().catch(() => ({}))) as { error?: string };
+              detail = `token request returned ${res.status}${json.error ? `: ${json.error}` : ""}`;
+            } catch (e) {
+              detail = `token request failed: ${(e as Error).message}`;
+            }
+          }
+          console.error("[evidence upload]", detail);
+          setPhase({ kind: "error", message: `${friendly(detail)} (${detail})` });
+        }
       } finally {
         abort.current = null;
         if (input.current) input.current.value = "";
