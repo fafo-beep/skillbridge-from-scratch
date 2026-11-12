@@ -29,6 +29,21 @@ export const PLANS = {
   },
 } as const;
 
+// The comparison rows: a string shows as text, true as a check, false as
+// "not included". The order is the order a buyer asks the questions.
+export type Cell = string | boolean;
+export const COMPARISON: Array<{ label: string; free: Cell; full: Cell }> = [
+  { label: "Courses and readings", free: "All of them", full: "All of them" },
+  { label: "Portfolio builder with file uploads", free: true, full: true },
+  { label: "Faculty evaluations", free: "One", full: "Unlimited" },
+  { label: "Evaluator's score and written note", free: true, full: true },
+  { label: "Resubmit after revisions are requested", free: true, full: true },
+  { label: "Portfolios for more than one course", free: false, full: true },
+  { label: "PDF of each decision, with a verification code your college can check", free: false, full: true },
+  { label: "Support", free: "Email", full: "Priority" },
+  { label: "Payment", free: "None", full: "$99 once, never again" },
+];
+
 export const PRICING_FAQ: Array<{ q: string; a: string }> = [
   {
     q: "Is $99 really a single payment?",

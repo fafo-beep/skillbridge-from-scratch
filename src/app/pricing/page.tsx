@@ -3,7 +3,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { PLANS, PRICING_FAQ } from "@/lib/plans";
-import PlanCard from "@/components/PlanCard";
+import PlanTable from "@/components/PlanTable";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -16,7 +16,6 @@ export const metadata: Metadata = {
 export default async function PricingPage() {
   const session = dbConfigured ? await auth() : null;
   const me = session?.user?.id ? await db.user.findUnique({ where: { id: session.user.id }, select: { premium: true } }) : null;
-  const btn = "inline-block rounded-md px-6 py-3 text-center font-semibold active:translate-y-px";
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-14">
@@ -26,32 +25,27 @@ export default async function PricingPage() {
         Join free and have one portfolio evaluated by faculty. When you want more, pay ${PLANS.full.price} once for every pathway and every evaluation. No subscription, nothing recurring, nothing to cancel.
       </p>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2">
-        <PlanCard
-          {...PLANS.free}
-          footer={
+      <div className="mt-10">
+        <PlanTable
+          freeAction={
             me ? (
-              <p className="text-sm font-semibold text-muted-foreground">{me.premium ? "Included in your plan" : "Your current plan"}</p>
+              <span className="font-semibold">{me.premium ? "Included" : "Your plan"}</span>
             ) : (
-              <Link href="/join" className={`${btn} w-full bg-secondary text-secondary-foreground hover:bg-muted sm:w-auto`}>
-                Create a Free Account
+              <Link href="/join" className="inline-block whitespace-nowrap rounded-md bg-background px-3 py-2 font-semibold text-primary hover:bg-muted active:translate-y-px">
+                Join Free
               </Link>
             )
           }
-        />
-        <PlanCard
-          {...PLANS.full}
-          highlight
-          footer={
+          fullAction={
             me?.premium ? (
-              <p className="font-bold">You&apos;re on the full plan.</p>
+              <span className="font-semibold">Your plan</span>
             ) : me ? (
-              <Link href="/upgrade" className={`${btn} w-full bg-background text-primary hover:bg-secondary sm:w-auto`}>
-                Upgrade for ${PLANS.full.price}
+              <Link href="/upgrade" className="inline-block whitespace-nowrap rounded-md bg-background px-3 py-2 font-semibold text-primary hover:bg-secondary active:translate-y-px">
+                Upgrade
               </Link>
             ) : (
-              <Link href="/join" className={`${btn} w-full bg-background text-primary hover:bg-secondary sm:w-auto`}>
-                Join Free, Upgrade Any Time
+              <Link href="/join" className="inline-block whitespace-nowrap rounded-md bg-background px-3 py-2 font-semibold text-primary hover:bg-secondary active:translate-y-px">
+                Get Started
               </Link>
             )
           }
