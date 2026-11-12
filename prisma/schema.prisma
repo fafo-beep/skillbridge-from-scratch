@@ -56,6 +56,10 @@ model User {
   totpPendingSecret String?
   totpEnabledAt     DateTime?
   totpLastStep      Int?
+  // Set when the person closes the account. The row stays as a tombstone
+  // so payments, audit entries and evaluation decisions keep their
+  // reference, with every personal field cleared.
+  deletedAt         DateTime?
   recoveryCodes RecoveryCode[]
   tokens       SecurityToken[]
   role         Role         @default(LEARNER)
@@ -66,6 +70,18 @@ model User {
   payments     Payment[]
   auditLogs    AuditLog[]
   oauthAccounts OAuthAccount[]
+}
+
+// Proof that a session's authenticator step was passed. The token carries a
+// random nonce from sign-in; verifyTwoStep writes its hash here only after
+// a code checks out, and the jwt callback promotes the token only when
+// the matching row exists. Nothing the client sends can create one.
+model TwoStepPass {
+  hash      String   @id
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // Recovery codes for two-step sign-in: shown once, stored hashed, used once.

@@ -31,8 +31,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const isOwner = p.userId === viewerId;
   let allowed = isOwner;
   if (!allowed) {
-    const viewer = await db.user.findUnique({ where: { id: viewerId }, select: { role: true } });
-    const staff = viewer?.role === "REVIEWER" || viewer?.role === "ADMIN";
+    const viewer = await db.user.findUnique({ where: { id: viewerId }, select: { role: true, totpEnabledAt: true } });
+    const staff = (viewer?.role === "REVIEWER" || viewer?.role === "ADMIN") && !!viewer.totpEnabledAt;
     allowed =
       staff &&
       (p.status === "SUBMITTED" ||

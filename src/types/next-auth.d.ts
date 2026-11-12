@@ -6,6 +6,7 @@ declare module "next-auth" {
     // True between the password step and the authenticator step.
     mfaPending?: boolean;
     pendingUserId?: string;
+    pendingNonce?: string;
   }
 }
 
@@ -14,5 +15,6 @@ declare module "next-auth/jwt" {
     uid?: string;
     sv?: number;
     mfa?: "none" | "pending" | "ok";
+    mfaNonce?: string;
   }
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
@@ -23,7 +24,9 @@ export default async function SecurityPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-14">
-      <p className="text-sm font-semibold text-muted-foreground">Account</p>
+      <p className="text-sm font-semibold text-muted-foreground">
+        <Link href="/account" className="text-primary hover:text-accent">Account</Link>
+      </p>
       <h1 className="mt-1 text-4xl font-bold leading-tight">Security</h1>
       {required && !user.totpEnabledAt && (
         <p role="status" className="mt-6 rounded-md bg-secondary px-5 py-4 font-semibold text-secondary-foreground">

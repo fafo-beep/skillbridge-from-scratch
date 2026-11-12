@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google";
 import Facebook from "next-auth/providers/facebook";
 import Apple from "next-auth/providers/apple";
 import bcrypt from "bcryptjs";
+import { createHash, randomBytes } from "node:crypto";
 import { db, dbConfigured } from "@/lib/db";
 import { LEGAL } from "@/lib/legal";
 import { clearRateLimit, ipFromHeaders, rateLimit } from "@/lib/rate-limit";
@@ -16,6 +17,10 @@ import { clearRateLimit, ipFromHeaders, rateLimit } from "@/lib/rate-limit";
 const DUMMY_HASH = bcrypt.hashSync("not-a-real-password-" + Math.random().toString(36).slice(2), 12);
 
 const EMAIL_SHAPE = /^[^\s@]{1,64}@[^\s@]{1,189}\.[^\s@]{2,}$/;
+
+export function twoStepPassHash(nonce: string): string {
+  return createHash("sha256").update(`twostep-pass:${nonce}`).digest("hex");
+}
 
 export class RateLimited extends CredentialsSignin {
   code = "rate_limited";
@@ -192,11 +197,13 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
       });
       return uid !== null;
     },
-    async jwt({ token, user, account, trigger, session }) {
+    async jwt({ token, user, account }) {
       // Two-step sign-in: a fresh sign-in for an account with an
       // authenticator starts as "pending" and the session carries no user
-      // id until verifyTotp (a server action) updates the token to "ok".
-      if (trigger === "update" && session?.mfa === "ok" && token.mfa === "pending") token.mfa = "ok";
+      // id until the step is passed. Promotion is decided here from server
+      // state only (a TwoStepPass row for this token's nonce), never from
+      // anything the client sends: Auth.js exposes the "update" trigger to
+      // the browser, so client-supplied session data cannot be trusted.
       if (account && account.provider !== "credentials") {
         // signIn above guaranteed the link exists; map identity -> our id.
         const linked = await db.oAuthAccount.findUnique({
@@ -222,7 +229,14 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         if (!current) return null;
         if (token.sv === undefined) token.sv = current.sessionVersion;
         else if (token.sv !== current.sessionVersion) return null;
-        if (token.mfa === undefined) token.mfa = current.totpEnabledAt ? "pending" : "none";
+        if (token.mfa === undefined) {
+          token.mfa = current.totpEnabledAt ? "pending" : "none";
+          if (token.mfa === "pending") token.mfaNonce = randomBytes(16).toString("hex");
+        }
+        if (token.mfa === "pending" && token.mfaNonce) {
+          const pass = await db.twoStepPass.findUnique({ where: { hash: twoStepPassHash(String(token.mfaNonce)) } });
+          if (pass && pass.userId === token.uid) token.mfa = "ok";
+        }
       }
       return token;
     },
@@ -232,6 +246,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         session.user.id = undefined as unknown as string;
         session.mfaPending = true;
         session.pendingUserId = token.uid as string;
+        session.pendingNonce = token.mfaNonce as string | undefined;
       } else if (token.uid) {
         session.user.id = token.uid as string;
       }

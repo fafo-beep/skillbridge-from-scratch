@@ -22,11 +22,14 @@ export function Enroll() {
         <p className="mt-2 leading-relaxed">
           Keep these recovery codes somewhere safe. Each works once, in place of the app, if you ever lose your phone. They will not be shown again.
         </p>
+        <p className="mt-2 leading-relaxed text-muted-foreground">
+          Every session opened with the password alone has been ended, this one included. When you continue you will sign in again with your password and a code.
+        </p>
         <ul className="mt-4 grid grid-cols-2 gap-2 rounded-md bg-background p-4 font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
           {state.recoveryCodes.map((c) => <li key={c}>{c}</li>)}
         </ul>
-        <button type="button" onClick={() => router.refresh()} className="mt-6 rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
-          I Have Saved Them
+        <button type="button" onClick={() => router.push("/signin")} className="mt-6 rounded-md bg-primary px-5 py-2.5 font-semibold text-primary-foreground hover:bg-accent active:translate-y-px">
+          I Have Saved Them, Sign In Again
         </button>
       </div>
     );

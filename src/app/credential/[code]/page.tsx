@@ -56,7 +56,7 @@ export default async function CredentialPage({ params }: { params: Promise<{ cod
           </div>
           <dl className="mt-8 divide-y divide-border rounded-lg bg-card" style={{ fontVariantNumeric: "tabular-nums" }}>
             {[
-              ["Learner", portfolio!.user.name ?? "Name withheld"],
+              ["Learner", portfolio!.user.name || "Name withheld at the learner's request"],
               ["Course", `${portfolio!.course.code} ${portfolio!.course.title}`],
               ["Recommendation", `${portfolio!.course.credits} credits`],
               ["Score", portfolio!.score != null ? `${portfolio!.score} of 5` : "Not recorded"],

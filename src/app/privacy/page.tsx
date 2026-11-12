@@ -75,7 +75,7 @@ const SECTIONS: LegalSection[] = [
   {
     heading: "Your choices and rights",
     paragraphs: [
-      `You can view and edit your portfolio content in the Service, and change your password from the sign-in page. To access, correct, export or delete your personal information, or to close your account, email ${privacyEmail}; we will respond within 30 days and may ask you to verify your identity. Depending on where you live, you may have additional rights, including the right to object to or restrict certain processing, to withdraw consent, to opt out of the sale or sharing of personal information (we do not sell or share it for cross-context advertising), and to complain to a data protection authority. We will not discriminate against you for exercising your rights.`,
+      `You can view and edit your portfolio content in the Service, and change your password from the sign-in page. From your Account page you can download everything we hold about you as a file and close your account yourself, at any time. For anything else, including correcting information, email ${privacyEmail}; we will respond within 30 days and may ask you to verify your identity. Depending on where you live, you may have additional rights, including the right to object to or restrict certain processing, to withdraw consent, to opt out of the sale or sharing of personal information (we do not sell or share it for cross-context advertising), and to complain to a data protection authority. We will not discriminate against you for exercising your rights.`,
     ],
   },
   {

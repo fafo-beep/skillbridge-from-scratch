@@ -46,9 +46,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // or decided reviews. Admins share that scope; drafts and revisions in
   // progress belong to the learner alone.
   const staffVisible = ["UNDER_REVIEW", "APPROVED", "DENIED"].includes(portfolio.status);
+  const enrolledStaff = !!viewer?.totpEnabledAt;
   const isStaff =
     !isOwner &&
     staffVisible &&
+    enrolledStaff &&
     ((viewer?.role === "REVIEWER" && portfolio.evaluatorId === viewerId) || viewer?.role === "ADMIN");
   if (!isOwner && !isStaff) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (isOwner && !viewer?.premium) return NextResponse.json({ error: "full plan required" }, { status: 402 });

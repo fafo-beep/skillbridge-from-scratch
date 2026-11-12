@@ -93,7 +93,7 @@ async function Header() {
               <Link href={me.home} className="hover:text-primary">
                 {me.label}
               </Link>
-              <Link href="/account/security" className="hidden text-muted-foreground hover:text-primary md:inline" aria-label="Account security">
+              <Link href="/account" className="hidden text-muted-foreground hover:text-primary md:inline" aria-label="Your account">
                 {me.first}
               </Link>
               <form action={logout}>

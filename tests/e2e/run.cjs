@@ -36,16 +36,28 @@ async function signIn(page, email, password) {
 }
 
 // RFC 6238 in the test itself, so the suite drives real authenticator codes.
-function totp(secret, offsetSteps = 0) {
+function totpAt(secret, step) {
   const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let bits = 0, value = 0; const bytes = [];
   for (const c of secret.toUpperCase().replace(/[^A-Z2-7]/g, "")) { value = (value << 5) | B32.indexOf(c); bits += 5; if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 255); bits -= 8; } }
-  const step = Math.floor(Date.now() / 30000) + offsetSteps;
   const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(step));
   const mac = require("crypto").createHmac("sha1", Buffer.from(bytes)).update(counter).digest();
   const o = mac[mac.length - 1] & 15;
   const bin = ((mac[o] & 127) << 24) | (mac[o + 1] << 16) | (mac[o + 2] << 8) | mac[o + 3];
   return String(bin % 1000000).padStart(6, "0");
+}
+function totp(secret, offsetSteps = 0) { return totpAt(secret, Math.floor(Date.now() / 30000) + offsetSteps); }
+
+// The server refuses any step at or before the last one it accepted, so
+// each sign-in needs a window never used before: the current one, or the
+// next, waiting for the clock when both are spent.
+async function freshCode(two) {
+  for (;;) {
+    const cur = Math.floor(Date.now() / 30000);
+    const step = Math.max(cur, (two.last ?? -1) + 1);
+    if (step <= cur + 1) { two.last = step; return totpAt(two.secret, step); }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
 }
 
 // First visit to a staff page sends the account to set up two-step sign-in.
@@ -54,18 +66,21 @@ async function enrollTwoStep(page) {
   await page.click('button:has-text("Set Up Two-Step Sign-In")');
   await page.waitForSelector('[data-testid="totp-secret"]');
   const secret = (await page.textContent('[data-testid="totp-secret"]')).trim();
-  await page.fill("#confirm-code", totp(secret));
+  const last = Math.floor(Date.now() / 30000);
+  await page.fill("#confirm-code", totpAt(secret, last));
   await page.click('button:has-text("Turn It On")');
   await page.waitForSelector("text=Two-step sign-in is on.");
   const recovery = (await page.locator("ul li").allTextContents()).filter((t) => /^[A-Z2-9]{5}-[A-Z2-9]{5}$/.test(t.trim()));
   await page.click('button:has-text("I Have Saved Them")');
-  return { secret, recovery };
+  // Enrollment ends every session, this one included.
+  await page.waitForURL("**/signin**", { timeout: 30000 });
+  return { secret, recovery, last };
 }
 
-async function signInStaff(page, email, password, secret) {
+async function signInStaff(page, email, password, two) {
   await signIn(page, email, password);
   await page.waitForURL("**/signin/2fa", { timeout: 30000 });
-  await page.fill("#code", totp(secret, 1));
+  await page.fill("#code", await freshCode(two));
   await page.click('button:has-text("Continue")');
 }
 
@@ -269,9 +284,22 @@ async function documentOutcomes(page, count, story) {
   const R = await (await ctx()).newPage();
   await signIn(R, "reviewer@dev.local", DEV_PASS);
   const reviewerTwoStep = await enrollTwoStep(R);
-  await R.goto(BASE + "/review");
+  await signInStaff(R, "reviewer@dev.local", DEV_PASS, reviewerTwoStep);
   await R.waitForURL("**/review", { timeout: 30000 });
-  ok("reviewer must set up two-step sign-in, then lands on evaluator dashboard");
+  ok("reviewer must set up two-step sign-in, then signs in with a code and lands on evaluator dashboard");
+
+  // A forged session update must not promote a pending session: this is
+  // the browser-reachable path Auth.js exposes, and the server ignores it.
+  const F2 = await (await ctx()).newPage();
+  await signIn(F2, "reviewer@dev.local", DEV_PASS);
+  await F2.waitForURL("**/signin/2fa", { timeout: 30000 });
+  const csrf = await (await F2.request.get(BASE + "/api/auth/csrf")).json();
+  const forged = await F2.request.post(BASE + "/api/auth/session", { data: { csrfToken: csrf.csrfToken, data: { mfa: "ok" } } });
+  const afterForge = await F2.request.get(BASE + "/review", { maxRedirects: 0 });
+  if (forged.status() >= 500 || afterForge.status() === 200) throw new Error(`forged session update promoted the session: ${forged.status()} ${afterForge.status()}`);
+  const forgedSession = await (await F2.request.get(BASE + "/api/auth/session")).json();
+  if (forgedSession?.user?.id) throw new Error("forged update produced a user id");
+  ok("forged session update cannot skip the authenticator");
   await R.locator("li", { hasText: learnerLast }).locator('button:has-text("Start evaluation")').first().click();
   await R.waitForURL("**/portfolio/**", { timeout: 30000 });
   await R.waitForSelector("text=Proposal template v4.docx");
@@ -312,7 +340,7 @@ async function documentOutcomes(page, count, story) {
   await R2.waitForSelector("text=That code is not right");
   // The enrollment code's window is spent (replay protection), so use the
   // next window's code, which the server accepts for clock drift.
-  const good = totp(reviewerTwoStep.secret, 1);
+  const good = await freshCode(reviewerTwoStep);
   await R2.fill("#code", good);
   await R2.click('button:has-text("Continue")');
   await R2.waitForURL("**/review", { timeout: 30000 });
@@ -451,8 +479,8 @@ async function documentOutcomes(page, count, story) {
   section("Roles and invitations");
   const A = await (await ctx()).newPage();
   await signIn(A, "admin@dev.local", DEV_PASS);
-  await enrollTwoStep(A);
-  await A.goto(BASE + "/admin");
+  const adminTwoStep = await enrollTwoStep(A);
+  await signInStaff(A, "admin@dev.local", DEV_PASS, adminTwoStep);
   await A.waitForURL("**/admin", { timeout: 30000 });
   ok("admin lands on /admin");
   const invitee = `evaluator${stamp}@university.edu`;
@@ -467,8 +495,8 @@ async function documentOutcomes(page, count, story) {
   await E.fill("#invite-last", "Evaluator");
   await E.fill("#invite-password", "strong-evaluator-pass");
   await E.click('button:has-text("Create evaluator account")');
-  await enrollTwoStep(E);
-  await E.goto(BASE + "/review");
+  const inviteeTwoStep = await enrollTwoStep(E);
+  await signInStaff(E, invitee, "strong-evaluator-pass", inviteeTwoStep);
   await E.waitForURL("**/review", { timeout: 30000 });
   ok("invitee becomes evaluator via link, after setting up two-step sign-in");
   await E.goto(link);
@@ -507,6 +535,39 @@ async function documentOutcomes(page, count, story) {
   await F.waitForSelector("text=no longer valid");
   ok("reset link single-use");
 
+  // ── Account: export and closure ──────────────────────────────────
+  section("Account");
+  const C = await (await ctx()).newPage();
+  const closeEmail = `closing${stamp}@example.com`;
+  await register(C, "Clo", "Sing", closeEmail);
+  await C.goto(BASE + "/courses/business-communication");
+  await C.click("text=Enroll free");
+  await C.waitForURL("**/dashboard", { timeout: 30000 });
+  const exp = await C.request.get(BASE + "/api/account/export");
+  const expJson = await exp.json();
+  if (exp.status() !== 200 || expJson.email !== closeEmail || !Array.isArray(expJson.enrollments) || expJson.enrollments.length !== 1 || "passwordHash" in expJson) {
+    throw new Error("export wrong: " + exp.status() + " " + JSON.stringify(expJson).slice(0, 200));
+  }
+  ok("data export returns the account's own data, without secrets");
+  await C.goto(BASE + "/account");
+  await C.check('input[type=checkbox]');
+  await C.fill("#proof", "not-the-password");
+  await C.click('button:has-text("Close My Account")');
+  await C.waitForSelector("text=That password is not right");
+  await C.fill("#proof", PASS);
+  await C.click('button:has-text("Close My Account")');
+  await C.waitForURL("**/?closed=1", { timeout: 30000 });
+  await C.waitForSelector("text=Your account is closed");
+  const gone = await pg.query(`select email, name, "passwordHash", "deletedAt" from "User" where id=(select id from "User" where "deletedAt" is not null and email like 'deleted-%' order by "deletedAt" desc limit 1)`);
+  if (!gone.rows[0] || gone.rows[0].passwordHash !== null || gone.rows[0].name !== "" || !gone.rows[0].deletedAt) throw new Error("account not anonymized: " + JSON.stringify(gone.rows[0]));
+  const remaining = await pg.query(`select count(*)::int as n from "User" where email=$1`, [closeEmail]);
+  if (remaining.rows[0].n !== 0) throw new Error("email still present after closure");
+  const afterExport = await C.request.get(BASE + "/api/account/export");
+  if (afterExport.status() !== 401) throw new Error("session survived closure: " + afterExport.status());
+  await signIn(C, closeEmail, PASS);
+  await C.waitForSelector("text=No account exists for this email yet.");
+  ok("account closed: wrong password refused, data anonymized, sessions ended, sign-in gone");
+
   // ── 7. Rate limiting ──────────────────────────────────────────────
   section("Rate limiting");
   const T = await (await ctx()).newPage();
@@ -534,6 +595,8 @@ async function documentOutcomes(page, count, story) {
   // lock the real owner out by burning the account's budget.
   const ownerEmail = `owner${stamp}@example.com`;
   const O = await (await ctx()).newPage();
+  // This suite has already used the sign-up allowance for one address.
+  await pg.query(`delete from "RateLimit" where key like 'register:%'`);
   await register(O, "Own", "Er", ownerEmail);
   await O.waitForURL("**/dashboard", { timeout: 30000 });
   await O.click('header button:has-text("Sign Out")');

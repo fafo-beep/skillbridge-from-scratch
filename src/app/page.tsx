@@ -59,7 +59,8 @@ const FAQS: Array<[string, string]> = [
   ],
 ];
 
-export default function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ closed?: string }> }) {
+  const { closed } = await searchParams;
   const featured = COURSES.slice(0, 3);
   const totalCredits = COURSES.reduce((s, c) => s + c.credits, 0);
   const stats: Array<[string, string]> = [
@@ -72,6 +73,11 @@ export default function HomePage() {
 
   return (
     <div>
+      {closed && (
+        <p role="status" className="mx-auto mt-6 max-w-6xl rounded-md bg-secondary px-5 py-4 font-semibold text-secondary-foreground">
+          Your account is closed and your data has been removed. Thank you for using SkillBridge.
+        </p>
+      )}
       <Reveal />
 
       {/* Hero: a pale field over the whole top; claim left, proof right */}

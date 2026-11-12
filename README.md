@@ -156,13 +156,31 @@ Free tier: one portfolio evaluated. Premium: unlimited.
 
 Any account can add an authenticator app (RFC 6238 TOTP, implemented in
 `src/lib/totp.ts` with no dependency); evaluators and admins must, and
-every staff page and action enforces it. After the password, the session
-token is "pending" and carries no user id until the code is accepted, so
-nothing reads as signed in. Codes are checked with one step of drift,
+every staff page, action and read path enforces it. After the password,
+the session token is "pending" and carries no user id until the code is
+accepted, so nothing reads as signed in. Promotion is decided from server
+state only: the token carries a random nonce, a verified code writes its
+hash to the TwoStepPass table, and the token callback promotes only when
+that row exists, so the browser-reachable session "update" path cannot
+flip it. Turning two-step on ends every session, the enrolling one
+included. Codes are checked with one step of drift,
 the last accepted step is stored so a code cannot be replayed, six wrong
 codes in fifteen minutes lock the step, and eight single-use recovery
 codes are issued at enrollment and stored hashed. Secrets are sealed with
 AES-256-GCM under a key derived from `AUTH_SECRET`.
+
+## Your account: export and closure
+
+`/account` shows the profile, links to security, downloads everything the
+service holds about the person as one JSON file (`/api/account/export`,
+rate limited, never secrets or hashes), and closes the account after a
+proof (password, or an authenticator code, or the exact email for a
+social-only account without one). Closure deletes learning content,
+drafts, undecided portfolios, evidence files, sign-in links and tokens;
+decided evaluations keep only their decision record with the name
+cleared; payments and audit entries stay attached to a tombstone row
+with every personal field cleared and every session ended. Admins must
+hand off the role before closing.
 
 ## Verifying a recommendation
 
@@ -199,5 +217,5 @@ in a folder and the same code path runs against it.
 
 ## Roadmap
 
-1. Account deletion and data export
-2. Evaluator profiles (institution, title) on the recommendation
+1. Evaluator profiles (institution, title) on the recommendation
+2. Backups: a restore drill against a Neon branch

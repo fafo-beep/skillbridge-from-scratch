@@ -58,7 +58,9 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   const viewer = await db.user.findUnique({ where: { id: viewerId } });
   const isOwner = portfolio.userId === viewerId;
   const decided = ["APPROVED", "DENIED", "REVISIONS_REQUESTED"].includes(portfolio.status);
-  const hasReviewerRole = viewer?.role === "REVIEWER" || viewer?.role === "ADMIN";
+  // Staff count as staff only once two-step sign-in is on, the same rule
+  // the staff pages and actions enforce.
+  const hasReviewerRole = (viewer?.role === "REVIEWER" || viewer?.role === "ADMIN") && !!viewer?.totpEnabledAt;
   // A reviewer sees only what the role needs: the open queue (SUBMITTED)
   // and their own claimed or decided reviews, never drafts, revisions in
   // progress, or another evaluator's case. While revisions are requested

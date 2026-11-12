@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { auth, signIn, signOut, updateSession, RateLimited } from "@/auth";
+import { auth, signIn, signOut, updateSession, twoStepPassHash, RateLimited } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { consumeToken, issueToken } from "@/lib/tokens";
@@ -167,6 +167,15 @@ async function requireUserId(): Promise<string> {
 async function requireTwoStep(userId: string) {
   const u = await db.user.findUnique({ where: { id: userId }, select: { totpEnabledAt: true } });
   if (!u?.totpEnabledAt) redirect("/account/security?required=1");
+}
+
+// The second-step guess budget: per account and address, and per account.
+async function totpBudget(userId: string): Promise<number | null> {
+  return (await rateLimit("totp", `${userId}|${await clientIp()}`)) ?? (await rateLimit("totpAccount", userId));
+}
+async function totpBudgetClear(userId: string) {
+  await clearRateLimit("totp", `${userId}|${await clientIp()}`);
+  await clearRateLimit("totpAccount", userId);
 }
 
 export async function enroll(courseSlug: string, returnTo?: unknown) {
@@ -767,9 +776,10 @@ export type TwoStepState = { error?: string };
 export async function verifyTwoStep(_prev: TwoStepState, formData: FormData): Promise<TwoStepState> {
   const session = await auth();
   const userId = session?.pendingUserId;
-  if (!session?.mfaPending || !userId) redirect("/signin");
+  const nonce = session?.pendingNonce;
+  if (!session?.mfaPending || !userId || !nonce) redirect("/signin");
   const input = String(formData.get("code") ?? "").trim();
-  const wait = await rateLimit("totp", userId);
+  const wait = await totpBudget(userId);
   if (wait) return { error: retryMessage(wait) };
   const user = await db.user.findUnique({ where: { id: userId }, select: { totpSecret: true, totpLastStep: true, role: true } });
   if (!user?.totpSecret) redirect("/signin");
@@ -797,8 +807,12 @@ export async function verifyTwoStep(_prev: TwoStepState, formData: FormData): Pr
     await audit(userId, "twostep.failed", userId);
     return { error: "That code is not right. Codes change every 30 seconds; try the current one." };
   }
-  await clearRateLimit("totp", userId);
-  await updateSession({ mfa: "ok" } as never);
+  await totpBudgetClear(userId);
+  // Record the proof for this token's nonce, then re-run the token
+  // callback (a server action may write the cookie) so it is promoted now.
+  await db.twoStepPass.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } } });
+  await db.twoStepPass.create({ data: { hash: twoStepPassHash(nonce), userId } });
+  await updateSession({});
   await audit(userId, "twostep.ok", userId);
   redirect(user.role === "ADMIN" ? "/admin" : user.role === "REVIEWER" ? "/review" : "/dashboard");
 }
@@ -826,7 +840,7 @@ export async function confirmTwoStep(_prev: EnrollState, formData: FormData): Pr
   const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { totpPendingSecret: true, totpEnabledAt: true } });
   if (user.totpEnabledAt) return { error: "Two-step sign-in is already on." };
   if (!user.totpPendingSecret) return { error: "Start again: scan a fresh code." };
-  const wait = await rateLimit("totp", userId);
+  const wait = await totpBudget(userId);
   if (wait) return { error: retryMessage(wait) };
   const secret = openSecret(user.totpPendingSecret);
   const step = checkTotp(secret, String(formData.get("code") ?? ""), null);
@@ -835,15 +849,14 @@ export async function confirmTwoStep(_prev: EnrollState, formData: FormData): Pr
   await db.$transaction([
     db.user.update({
       where: { id: userId },
-      data: { totpSecret: user.totpPendingSecret, totpPendingSecret: null, totpEnabledAt: new Date(), totpLastStep: step },
+      // Every session opened with the password alone ends now, this one
+      // included: from here on, signing in means password and code.
+      data: { totpSecret: user.totpPendingSecret, totpPendingSecret: null, totpEnabledAt: new Date(), totpLastStep: step, sessionVersion: { increment: 1 } },
     }),
     db.recoveryCode.deleteMany({ where: { userId } }),
     db.recoveryCode.createMany({ data: codes.map((c) => ({ userId, hash: hashRecoveryCode(c) })) }),
   ]);
-  await clearRateLimit("totp", userId);
-  // This session signed in before the authenticator existed, so its token
-  // never entered the pending state; nothing to update. (Setting a cookie
-  // here would also re-render the page and hide the recovery codes.)
+  await totpBudgetClear(userId);
   await audit(userId, "twostep.enabled", userId);
   // No revalidation here: the page must stay on the recovery codes until
   // the person says they have saved them; the client refreshes then.
@@ -857,7 +870,7 @@ export async function disableTwoStep(_prev: TwoStepState, formData: FormData): P
   const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { totpSecret: true, totpLastStep: true, role: true } });
   if (user.role !== "LEARNER") return { error: "Evaluators and admins must keep two-step sign-in on." };
   if (!user.totpSecret) return { error: "Two-step sign-in is not on." };
-  const wait = await rateLimit("totp", userId);
+  const wait = await totpBudget(userId);
   if (wait) return { error: retryMessage(wait) };
   const step = checkTotp(openSecret(user.totpSecret), String(formData.get("code") ?? ""), user.totpLastStep);
   if (step == null) return { error: "That code is not right." };
@@ -867,5 +880,75 @@ export async function disableTwoStep(_prev: TwoStepState, formData: FormData): P
   ]);
   await audit(userId, "twostep.disabled", userId);
   revalidatePath("/account/security");
+  return {};
+}
+
+// ── Closing an account ───────────────────────────────────────────────────
+// The person proves it is them (password, or an authenticator code for a
+// social-only account with one, or their exact email otherwise), then:
+// learning content, drafts, evidence files, sign-in links and tokens are
+// deleted; decided evaluations keep only their decision record; payments
+// and audit entries stay attached to a tombstone row with every personal
+// field cleared; every session ends.
+
+export type DeleteState = { error?: string };
+
+export async function deleteAccount(_prev: DeleteState, formData: FormData): Promise<DeleteState> {
+  const userId = await requireUserId();
+  const user = await db.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { email: true, passwordHash: true, totpSecret: true, totpLastStep: true, role: true },
+  });
+  if (user.role === "ADMIN") return { error: "An admin account cannot be closed while it is an admin. Have another admin remove the role first." };
+
+  const proof = String(formData.get("proof") ?? "");
+  const wait = await totpBudget(userId);
+  if (wait) return { error: retryMessage(wait) };
+  let proven = false;
+  if (user.passwordHash) proven = await bcrypt.compare(proof, user.passwordHash);
+  else if (user.totpSecret) proven = checkTotp(openSecret(user.totpSecret), proof, user.totpLastStep) != null;
+  else proven = proof.trim().toLowerCase() === user.email;
+  if (!proven) {
+    await audit(userId, "account.delete_refused", userId);
+    return { error: user.passwordHash ? "That password is not right." : user.totpSecret ? "That code is not right." : "Type your email address exactly as it appears." };
+  }
+
+  const evidence = await db.evidence.findMany({ where: { portfolio: { userId } }, select: { fileKey: true } });
+  await db.$transaction(async (tx) => {
+    await tx.progress.deleteMany({ where: { enrollment: { userId } } });
+    await tx.enrollment.deleteMany({ where: { userId } });
+    await tx.evidence.deleteMany({ where: { portfolio: { userId } } });
+    await tx.outcomeResponse.deleteMany({ where: { portfolio: { userId } } });
+    // Drafts and anything not yet decided go; decided evaluations keep the
+    // decision only (status, score, date, verification code).
+    await tx.portfolio.deleteMany({ where: { userId, status: { in: ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "REVISIONS_REQUESTED"] } } });
+    await tx.portfolio.updateMany({ where: { userId }, data: { narrative: "" } });
+    await tx.securityToken.deleteMany({ where: { userId } });
+    await tx.recoveryCode.deleteMany({ where: { userId } });
+    await tx.oAuthAccount.deleteMany({ where: { userId } });
+    await tx.email.deleteMany({ where: { to: user.email } });
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        email: `deleted-${userId}@deleted.invalid`,
+        name: "",
+        firstName: null,
+        lastName: null,
+        passwordHash: null,
+        emailVerifiedAt: null,
+        totpSecret: null,
+        totpPendingSecret: null,
+        totpEnabledAt: null,
+        totpLastStep: null,
+        premium: false,
+        role: "LEARNER",
+        deletedAt: new Date(),
+        sessionVersion: { increment: 1 },
+      },
+    });
+    await tx.auditLog.create({ data: { userId, action: "account.deleted", target: userId } });
+  });
+  for (const e of evidence) if (e.fileKey) await deleteFile(e.fileKey);
+  await signOut({ redirectTo: "/?closed=1" });
   return {};
 }
