@@ -174,7 +174,7 @@ async function resolveOAuthUser(opts: {
   return created.id;
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update: updateSession } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/signin" },
@@ -192,7 +192,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       });
       return uid !== null;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
+      // Two-step sign-in: a fresh sign-in for an account with an
+      // authenticator starts as "pending" and the session carries no user
+      // id until verifyTotp (a server action) updates the token to "ok".
+      if (trigger === "update" && session?.mfa === "ok" && token.mfa === "pending") token.mfa = "ok";
       if (account && account.provider !== "credentials") {
         // signIn above guaranteed the link exists; map identity -> our id.
         const linked = await db.oAuthAccount.findUnique({
@@ -213,16 +217,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.uid) {
         const current = await db.user.findUnique({
           where: { id: token.uid as string },
-          select: { sessionVersion: true },
+          select: { sessionVersion: true, totpEnabledAt: true },
         });
         if (!current) return null;
         if (token.sv === undefined) token.sv = current.sessionVersion;
         else if (token.sv !== current.sessionVersion) return null;
+        if (token.mfa === undefined) token.mfa = current.totpEnabledAt ? "pending" : "none";
       }
       return token;
     },
     session({ session, token }) {
-      if (token.uid) session.user.id = token.uid as string;
+      if (token.uid && token.mfa === "pending") {
+        // Signed in with a password, second step not done: no identity yet.
+        session.user.id = undefined as unknown as string;
+        session.mfaPending = true;
+        session.pendingUserId = token.uid as string;
+      } else if (token.uid) {
+        session.user.id = token.uid as string;
+      }
       return session;
     },
   },

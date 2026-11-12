@@ -152,6 +152,18 @@ nothing and grants nothing. Every checkout and verification is audited.
 
 Free tier: one portfolio evaluated. Premium: unlimited.
 
+## Two-step sign-in
+
+Any account can add an authenticator app (RFC 6238 TOTP, implemented in
+`src/lib/totp.ts` with no dependency); evaluators and admins must, and
+every staff page and action enforces it. After the password, the session
+token is "pending" and carries no user id until the code is accepted, so
+nothing reads as signed in. Codes are checked with one step of drift,
+the last accepted step is stored so a code cannot be replayed, six wrong
+codes in fifteen minutes lock the step, and eight single-use recovery
+codes are issued at enrollment and stored hashed. Secrets are sealed with
+AES-256-GCM under a key derived from `AUTH_SECRET`.
+
 ## Verifying a recommendation
 
 Every approved recommendation carries a sixteen-character verification
@@ -187,5 +199,5 @@ in a folder and the same code path runs against it.
 
 ## Roadmap
 
-1. Two-factor sign-in for evaluators and admins
-2. Account deletion and data export
+1. Account deletion and data export
+2. Evaluator profiles (institution, title) on the recommendation

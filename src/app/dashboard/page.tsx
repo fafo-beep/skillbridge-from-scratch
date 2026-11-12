@@ -25,6 +25,7 @@ export default async function DashboardPage({
 }) {
   const notice = await searchParams;
   const session = dbConfigured ? await auth() : null;
+  if (session?.mfaPending) redirect("/signin/2fa");
 
   if (!session?.user?.id) {
     return (

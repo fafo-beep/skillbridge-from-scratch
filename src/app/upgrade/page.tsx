@@ -42,6 +42,7 @@ export default async function UpgradePage({
 }) {
   const { reason } = await searchParams;
   const session = dbConfigured ? await auth() : null;
+  if (session?.mfaPending) redirect("/signin/2fa");
   if (!session?.user?.id) redirect("/signin");
   const user = await db.user.findUnique({ where: { id: session.user.id } });
   if (!user) redirect("/signin");

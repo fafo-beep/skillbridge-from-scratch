@@ -43,7 +43,7 @@ async function viewer() {
   if (!dbConfigured) return null;
   const session = await auth();
   const id = session?.user?.id;
-  if (!id) return null;
+  if (!id || session?.mfaPending) return null;
   const user = await db.user.findUnique({ where: { id }, select: { firstName: true, name: true, role: true } });
   if (!user) return null;
   const home = user.role === "ADMIN" ? "/admin" : user.role === "REVIEWER" ? "/review" : "/dashboard";
@@ -90,9 +90,9 @@ async function Header() {
               <Link href={me.home} className="hover:text-primary">
                 {me.label}
               </Link>
-              <span className="hidden text-muted-foreground md:inline" aria-label="Signed in as">
+              <Link href="/account/security" className="hidden text-muted-foreground hover:text-primary md:inline" aria-label="Account security">
                 {me.first}
-              </span>
+              </Link>
               <form action={logout}>
                 <button type="submit" className="rounded-md bg-secondary px-4 py-2 font-semibold text-secondary-foreground hover:bg-muted active:translate-y-px">
                   Sign Out

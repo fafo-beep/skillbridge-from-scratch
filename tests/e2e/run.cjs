@@ -35,6 +35,40 @@ async function signIn(page, email, password) {
   await page.click('button[type=submit]:has-text("Sign in")');
 }
 
+// RFC 6238 in the test itself, so the suite drives real authenticator codes.
+function totp(secret, offsetSteps = 0) {
+  const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0, value = 0; const bytes = [];
+  for (const c of secret.toUpperCase().replace(/[^A-Z2-7]/g, "")) { value = (value << 5) | B32.indexOf(c); bits += 5; if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 255); bits -= 8; } }
+  const step = Math.floor(Date.now() / 30000) + offsetSteps;
+  const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(step));
+  const mac = require("crypto").createHmac("sha1", Buffer.from(bytes)).update(counter).digest();
+  const o = mac[mac.length - 1] & 15;
+  const bin = ((mac[o] & 127) << 24) | (mac[o + 1] << 16) | (mac[o + 2] << 8) | mac[o + 3];
+  return String(bin % 1000000).padStart(6, "0");
+}
+
+// First visit to a staff page sends the account to set up two-step sign-in.
+async function enrollTwoStep(page) {
+  await page.waitForURL("**/account/security?required=1", { timeout: 30000 });
+  await page.click('button:has-text("Set Up Two-Step Sign-In")');
+  await page.waitForSelector('[data-testid="totp-secret"]');
+  const secret = (await page.textContent('[data-testid="totp-secret"]')).trim();
+  await page.fill("#confirm-code", totp(secret));
+  await page.click('button:has-text("Turn It On")');
+  await page.waitForSelector("text=Two-step sign-in is on.");
+  const recovery = (await page.locator("ul li").allTextContents()).filter((t) => /^[A-Z2-9]{5}-[A-Z2-9]{5}$/.test(t.trim()));
+  await page.click('button:has-text("I Have Saved Them")');
+  return { secret, recovery };
+}
+
+async function signInStaff(page, email, password, secret) {
+  await signIn(page, email, password);
+  await page.waitForURL("**/signin/2fa", { timeout: 30000 });
+  await page.fill("#code", totp(secret, 1));
+  await page.click('button:has-text("Continue")');
+}
+
 async function register(page, first, last, email) {
   await page.goto(BASE + "/join");
   await page.fill("#join-first", first);
@@ -234,8 +268,10 @@ async function documentOutcomes(page, count, story) {
 
   const R = await (await ctx()).newPage();
   await signIn(R, "reviewer@dev.local", DEV_PASS);
+  const reviewerTwoStep = await enrollTwoStep(R);
+  await R.goto(BASE + "/review");
   await R.waitForURL("**/review", { timeout: 30000 });
-  ok("reviewer lands on evaluator dashboard");
+  ok("reviewer must set up two-step sign-in, then lands on evaluator dashboard");
   await R.locator("li", { hasText: learnerLast }).locator('button:has-text("Start evaluation")').first().click();
   await R.waitForURL("**/portfolio/**", { timeout: 30000 });
   await R.waitForSelector("text=Proposal template v4.docx");
@@ -259,6 +295,45 @@ async function documentOutcomes(page, count, story) {
   await R.waitForURL("**/review", { timeout: 30000 });
   await R.waitForSelector("text=Credit recommended · 5/5");
   ok("decision recorded, shows in Completed");
+
+  // Two-step sign-in, exercised properly: a password alone opens nothing,
+  // a wrong code is refused, a used code cannot be replayed, a recovery
+  // code works once.
+  const R2 = await (await ctx()).newPage();
+  await signIn(R2, "reviewer@dev.local", DEV_PASS);
+  await R2.waitForURL("**/signin/2fa", { timeout: 30000 });
+  await R2.goto(BASE + "/review");
+  await R2.waitForURL("**/signin/2fa", { timeout: 30000 });
+  const pendingReview = await R2.request.get(BASE + "/review", { maxRedirects: 0 });
+  if (pendingReview.status() === 200) throw new Error("pending session could open the review queue");
+  ok("password alone does not sign a staff account in");
+  await R2.fill("#code", "000000");
+  await R2.click('button:has-text("Continue")');
+  await R2.waitForSelector("text=That code is not right");
+  // The enrollment code's window is spent (replay protection), so use the
+  // next window's code, which the server accepts for clock drift.
+  const good = totp(reviewerTwoStep.secret, 1);
+  await R2.fill("#code", good);
+  await R2.click('button:has-text("Continue")');
+  await R2.waitForURL("**/review", { timeout: 30000 });
+  ok("wrong code refused, right code signs in");
+  const R3 = await (await ctx()).newPage();
+  await signIn(R3, "reviewer@dev.local", DEV_PASS);
+  await R3.waitForURL("**/signin/2fa", { timeout: 30000 });
+  await R3.fill("#code", good);
+  await R3.click('button:has-text("Continue")');
+  await R3.waitForSelector("text=That code is not right");
+  await R3.fill("#code", reviewerTwoStep.recovery[0]);
+  await R3.click('button:has-text("Continue")');
+  await R3.waitForURL("**/review", { timeout: 30000 });
+  ok("a used code cannot be replayed; a recovery code works");
+  const R4 = await (await ctx()).newPage();
+  await signIn(R4, "reviewer@dev.local", DEV_PASS);
+  await R4.waitForURL("**/signin/2fa", { timeout: 30000 });
+  await R4.fill("#code", reviewerTwoStep.recovery[0]);
+  await R4.click('button:has-text("Continue")');
+  await R4.waitForSelector("text=That code is not right");
+  ok("a recovery code works only once");
 
   await L.goto(BASE + "/dashboard");
   await L.waitForSelector("text=3 credits · score 5 of 5");
@@ -376,6 +451,8 @@ async function documentOutcomes(page, count, story) {
   section("Roles and invitations");
   const A = await (await ctx()).newPage();
   await signIn(A, "admin@dev.local", DEV_PASS);
+  await enrollTwoStep(A);
+  await A.goto(BASE + "/admin");
   await A.waitForURL("**/admin", { timeout: 30000 });
   ok("admin lands on /admin");
   const invitee = `evaluator${stamp}@university.edu`;
@@ -390,8 +467,10 @@ async function documentOutcomes(page, count, story) {
   await E.fill("#invite-last", "Evaluator");
   await E.fill("#invite-password", "strong-evaluator-pass");
   await E.click('button:has-text("Create evaluator account")');
+  await enrollTwoStep(E);
+  await E.goto(BASE + "/review");
   await E.waitForURL("**/review", { timeout: 30000 });
-  ok("invitee becomes evaluator via link");
+  ok("invitee becomes evaluator via link, after setting up two-step sign-in");
   await E.goto(link);
   await E.waitForSelector("text=no longer valid");
   ok("invite link single-use");
@@ -457,7 +536,8 @@ async function documentOutcomes(page, count, story) {
   const O = await (await ctx()).newPage();
   await register(O, "Own", "Er", ownerEmail);
   await O.waitForURL("**/dashboard", { timeout: 30000 });
-  await O.goto(BASE + "/signin");
+  await O.click('header button:has-text("Sign Out")');
+  await O.waitForURL(BASE + "/", { timeout: 30000 });
   for (let i = 0; i < 9; i++) {
     await signIn(O, ownerEmail, "wrong-password-xx");
     await O.waitForSelector("text=Email or password is incorrect");

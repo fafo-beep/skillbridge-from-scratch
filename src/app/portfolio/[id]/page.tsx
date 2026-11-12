@@ -40,6 +40,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   if (!dbConfigured) redirect("/dashboard");
   const { id } = await params;
   const session = await auth();
+  if (session?.mfaPending) redirect("/signin/2fa");
   const viewerId = session?.user?.id;
   if (!viewerId) redirect("/signin");
 

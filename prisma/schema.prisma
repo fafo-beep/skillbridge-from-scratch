@@ -49,6 +49,14 @@ model User {
   // Consent record: when and which version of the Terms was accepted
   termsAcceptedAt DateTime?
   termsVersion    String?
+  // Two-step sign-in. Secrets are AES-GCM sealed under AUTH_SECRET. The
+  // pending secret exists only between "begin" and "confirm"; the last
+  // accepted step stops a code being replayed inside its window.
+  totpSecret        String?
+  totpPendingSecret String?
+  totpEnabledAt     DateTime?
+  totpLastStep      Int?
+  recoveryCodes RecoveryCode[]
   tokens       SecurityToken[]
   role         Role         @default(LEARNER)
   premium      Boolean      @default(false)
@@ -58,6 +66,16 @@ model User {
   payments     Payment[]
   auditLogs    AuditLog[]
   oauthAccounts OAuthAccount[]
+}
+
+// Recovery codes for two-step sign-in: shown once, stored hashed, used once.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hash      String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 
 // Single-use, hashed tokens for email verification and password reset.

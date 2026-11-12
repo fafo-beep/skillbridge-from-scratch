@@ -3,6 +3,8 @@ import Link from "next/link";
 import AuthForm from "@/components/AuthForm";
 import SocialButtons from "@/components/SocialButtons";
 import { login } from "@/lib/actions";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,9 @@ export default async function SignInPage({
   searchParams: Promise<{ reset?: string }>;
 }) {
   const { reset } = await searchParams;
+  const session = await auth();
+  if (session?.mfaPending) redirect("/signin/2fa");
+  if (session?.user?.id) redirect("/dashboard");
   return (
     <div className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-4xl font-bold leading-tight">Welcome back</h1>

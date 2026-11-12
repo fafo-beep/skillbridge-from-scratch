@@ -3,14 +3,15 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { auth, signIn, signOut, RateLimited } from "@/auth";
+import { auth, signIn, signOut, updateSession, RateLimited } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { consumeToken, issueToken } from "@/lib/tokens";
-import { clientIp, rateLimit, retryMessage } from "@/lib/rate-limit";
+import { clearRateLimit, clientIp, rateLimit, retryMessage } from "@/lib/rate-limit";
 import { LEGAL } from "@/lib/legal";
 import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, deleteFile, extensionOf, headFile, isKeyFor } from "@/lib/storage";
 import { newVerifyCode } from "@/lib/credential";
+import { hashRecoveryCode, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp as checkTotp } from "@/lib/totp";
 
 // Server actions. Every one re-checks the session server-side; nothing
 // trusts the client. Privileged writes land in AuditLog.
@@ -97,7 +98,10 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   // Rate limiting happens inside the credentials provider (src/auth.ts),
   // so the raw Auth.js callback URL is covered by the same budget.
   try {
-    await signIn("credentials", { email, password, redirectTo: "/dashboard" });
+    // An account with an authenticator goes to the second step; the
+    // session carries no identity until that step is passed.
+    const two = await db.user.findUnique({ where: { email }, select: { totpEnabledAt: true } });
+    await signIn("credentials", { email, password, redirectTo: two?.totpEnabledAt ? "/signin/2fa" : "/dashboard" });
   } catch (err) {
     // signIn throws a redirect on success; rethrow those
     if (err && typeof err === "object" && "digest" in err && String(err.digest).startsWith("NEXT_REDIRECT")) {
@@ -152,9 +156,17 @@ export async function logout() {
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
+  if (session?.mfaPending) redirect("/signin/2fa");
   const id = session?.user?.id;
   if (!id) redirect("/signin");
   return id;
+}
+
+// Staff must have two-step sign-in. Enforced in every staff action, not
+// only on the pages, so a direct call cannot skip it.
+async function requireTwoStep(userId: string) {
+  const u = await db.user.findUnique({ where: { id: userId }, select: { totpEnabledAt: true } });
+  if (!u?.totpEnabledAt) redirect("/account/security?required=1");
 }
 
 export async function enroll(courseSlug: string, returnTo?: unknown) {
@@ -428,6 +440,7 @@ async function requireReviewer(): Promise<string> {
   const userId = await requireUserId();
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user || (user.role !== "REVIEWER" && user.role !== "ADMIN")) redirect("/dashboard");
+  if (!user.totpEnabledAt) redirect("/account/security?required=1");
   return userId;
 }
 
@@ -585,6 +598,7 @@ async function requireAdmin(): Promise<string> {
   const userId = await requireUserId();
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
+  if (!user.totpEnabledAt) redirect("/account/security?required=1");
   return userId;
 }
 
@@ -742,4 +756,116 @@ export async function resetPassword(token: string, _prev: FormState, formData: F
   });
   await audit(userId, "user.password_reset", userId);
   redirect("/signin?reset=1");
+}
+
+// ── Two-step sign-in (authenticator app) ─────────────────────────────────
+
+export type TwoStepState = { error?: string };
+
+// Second step after the password. Accepts a six-digit authenticator code
+// or a recovery code. Six wrong tries in fifteen minutes locks the step.
+export async function verifyTwoStep(_prev: TwoStepState, formData: FormData): Promise<TwoStepState> {
+  const session = await auth();
+  const userId = session?.pendingUserId;
+  if (!session?.mfaPending || !userId) redirect("/signin");
+  const input = String(formData.get("code") ?? "").trim();
+  const wait = await rateLimit("totp", userId);
+  if (wait) return { error: retryMessage(wait) };
+  const user = await db.user.findUnique({ where: { id: userId }, select: { totpSecret: true, totpLastStep: true, role: true } });
+  if (!user?.totpSecret) redirect("/signin");
+
+  let ok = false;
+  if (/^\d{6}$/.test(input.replace(/\s/g, ""))) {
+    const step = checkTotp(openSecret(user.totpSecret), input, user.totpLastStep);
+    if (step != null) {
+      // Claim the step atomically so the same code cannot be replayed.
+      const claimed = await db.user.updateMany({
+        where: { id: userId, OR: [{ totpLastStep: null }, { totpLastStep: { lt: step } }] },
+        data: { totpLastStep: step },
+      });
+      ok = claimed.count === 1;
+    }
+  } else {
+    const used = await db.recoveryCode.updateMany({
+      where: { userId, hash: hashRecoveryCode(input), usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    ok = used.count === 1;
+    if (ok) await audit(userId, "twostep.recovery_used", userId);
+  }
+  if (!ok) {
+    await audit(userId, "twostep.failed", userId);
+    return { error: "That code is not right. Codes change every 30 seconds; try the current one." };
+  }
+  await clearRateLimit("totp", userId);
+  await updateSession({ mfa: "ok" } as never);
+  await audit(userId, "twostep.ok", userId);
+  redirect(user.role === "ADMIN" ? "/admin" : user.role === "REVIEWER" ? "/review" : "/dashboard");
+}
+
+// Enrollment, step one: a fresh secret the authenticator app scans. It
+// stays pending until a code from the app proves the app has it.
+export async function beginTwoStep(): Promise<{ secret: string; uri: string; qr: string }> {
+  const userId = await requireUserId();
+  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, totpEnabledAt: true } });
+  if (user.totpEnabledAt) redirect("/account/security");
+  const secret = newTotpSecret();
+  await db.user.update({ where: { id: userId }, data: { totpPendingSecret: sealSecret(secret) } });
+  const uri = otpauthUri(secret, user.email);
+  const { toDataURL } = await import("qrcode");
+  const qr = await toDataURL(uri, { margin: 1, width: 220, color: { dark: "#1b2430", light: "#ffffff" } });
+  return { secret, uri, qr };
+}
+
+export type EnrollState = { error?: string; recoveryCodes?: string[] };
+
+// Enrollment, step two: the first code from the app switches it on and
+// issues recovery codes, shown once.
+export async function confirmTwoStep(_prev: EnrollState, formData: FormData): Promise<EnrollState> {
+  const userId = await requireUserId();
+  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { totpPendingSecret: true, totpEnabledAt: true } });
+  if (user.totpEnabledAt) return { error: "Two-step sign-in is already on." };
+  if (!user.totpPendingSecret) return { error: "Start again: scan a fresh code." };
+  const wait = await rateLimit("totp", userId);
+  if (wait) return { error: retryMessage(wait) };
+  const secret = openSecret(user.totpPendingSecret);
+  const step = checkTotp(secret, String(formData.get("code") ?? ""), null);
+  if (step == null) return { error: "That code did not match. Check the app shows SkillBridge and try the current code." };
+  const codes = newRecoveryCodes();
+  await db.$transaction([
+    db.user.update({
+      where: { id: userId },
+      data: { totpSecret: user.totpPendingSecret, totpPendingSecret: null, totpEnabledAt: new Date(), totpLastStep: step },
+    }),
+    db.recoveryCode.deleteMany({ where: { userId } }),
+    db.recoveryCode.createMany({ data: codes.map((c) => ({ userId, hash: hashRecoveryCode(c) })) }),
+  ]);
+  await clearRateLimit("totp", userId);
+  // This session signed in before the authenticator existed, so its token
+  // never entered the pending state; nothing to update. (Setting a cookie
+  // here would also re-render the page and hide the recovery codes.)
+  await audit(userId, "twostep.enabled", userId);
+  // No revalidation here: the page must stay on the recovery codes until
+  // the person says they have saved them; the client refreshes then.
+  return { recoveryCodes: codes };
+}
+
+// Switching it off needs a current code, and staff cannot: their role
+// requires it. Admins remove the role first if an evaluator must lose it.
+export async function disableTwoStep(_prev: TwoStepState, formData: FormData): Promise<TwoStepState> {
+  const userId = await requireUserId();
+  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { totpSecret: true, totpLastStep: true, role: true } });
+  if (user.role !== "LEARNER") return { error: "Evaluators and admins must keep two-step sign-in on." };
+  if (!user.totpSecret) return { error: "Two-step sign-in is not on." };
+  const wait = await rateLimit("totp", userId);
+  if (wait) return { error: retryMessage(wait) };
+  const step = checkTotp(openSecret(user.totpSecret), String(formData.get("code") ?? ""), user.totpLastStep);
+  if (step == null) return { error: "That code is not right." };
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { totpSecret: null, totpPendingSecret: null, totpEnabledAt: null, totpLastStep: null } }),
+    db.recoveryCode.deleteMany({ where: { userId } }),
+  ]);
+  await audit(userId, "twostep.disabled", userId);
+  revalidatePath("/account/security");
+  return {};
 }

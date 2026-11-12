@@ -19,6 +19,8 @@ export const LIMITS = {
   verifyResend: { limit: 3, windowSec: 60 * 60 },
   // Public credential lookups, per IP: generous for a registrar, useless for guessing.
   credential: { limit: 60, windowSec: 15 * 60 },
+  // Authenticator codes per account: six digits must not be guessable by volume.
+  totp: { limit: 6, windowSec: 15 * 60 },
 } as const satisfies Record<string, Limit>;
 
 export function ipFromHeaders(h: Headers): string {

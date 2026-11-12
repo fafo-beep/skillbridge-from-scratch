@@ -24,6 +24,7 @@ export default async function ReviewDashboardPage() {
   if (!viewerId) redirect("/signin");
   const viewer = await db.user.findUnique({ where: { id: viewerId } });
   if (!viewer || (viewer.role !== "REVIEWER" && viewer.role !== "ADMIN")) redirect("/dashboard");
+  if (!viewer.totpEnabledAt) redirect("/account/security?required=1");
 
   const [queue, mine, done] = await Promise.all([
     db.portfolio.findMany({

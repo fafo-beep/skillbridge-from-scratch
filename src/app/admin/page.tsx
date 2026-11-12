@@ -15,6 +15,7 @@ export default async function AdminPage() {
   if (!viewerId) redirect("/signin");
   const viewer = await db.user.findUnique({ where: { id: viewerId } });
   if (!viewer || viewer.role !== "ADMIN") redirect("/dashboard");
+  if (!viewer.totpEnabledAt) redirect("/account/security?required=1");
 
   const [learners, premium, submitted, decided, staff, invites, evaluators] = await Promise.all([
     db.user.count({ where: { role: "LEARNER" } }),
