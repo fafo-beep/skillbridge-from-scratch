@@ -7,33 +7,10 @@ import { auth } from "@/auth";
 import { db, dbConfigured } from "@/lib/db";
 import { startCheckout } from "@/lib/actions";
 import { PREMIUM_PRICE_USD, stripeConfigured } from "@/lib/stripe";
+import { PLANS } from "@/lib/plans";
+import PlanCard from "@/components/PlanCard";
 
 export const metadata: Metadata = { title: "Upgrade" };
-
-const INCLUDED = [
-  "Unlimited credit portfolios and faculty evaluations",
-  "Every course pathway, every field",
-  "Evaluator notes and scores on each decision",
-  "Every decided portfolio as a PDF to take to your college",
-  "Priority support",
-];
-
-function Check({ className = "" }: { className?: string }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`mt-1 shrink-0 ${className}`}>
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
-
-function Feature({ text, tone }: { text: string; tone: "card" | "primary" }) {
-  return (
-    <li className="flex items-start gap-3">
-      <Check className={tone === "primary" ? "text-primary-foreground" : "text-primary"} />
-      <span>{text}</span>
-    </li>
-  );
-}
 
 export default async function UpgradePage({
   searchParams,
@@ -61,32 +38,14 @@ export default async function UpgradePage({
         One payment of ${PREMIUM_PRICE_USD}. No subscription, nothing recurring, nothing to cancel.
       </p>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-[1fr_1fr]">
-        <div className="rounded-lg bg-card p-8">
-          <p className="text-xl font-bold">Free</p>
-          <p className="mt-4 text-5xl font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>$0</p>
-          <p className="mt-1 text-muted-foreground">for as long as you like</p>
-          <ul className="mt-6 space-y-3 leading-relaxed">
-            {["Browse every course and reading", "Build portfolios and track progress", "One portfolio evaluated by faculty"].map((t) => (
-              <Feature key={t} text={t} tone="card" />
-            ))}
-          </ul>
-          {!user.premium && <p className="mt-8 text-sm font-semibold text-muted-foreground">Your current plan</p>}
-        </div>
-        <div className="rounded-lg bg-primary p-8 text-primary-foreground">
-          <p className="text-xl font-bold">Full Plan</p>
-          <p className="mt-4 text-5xl font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>
-            ${PREMIUM_PRICE_USD}
-          </p>
-          <p className="mt-1">once, not monthly</p>
-          <ul className="mt-6 space-y-3 leading-relaxed">
-            {INCLUDED.map((i) => (
-              <Feature key={i} text={i} tone="primary" />
-            ))}
-          </ul>
-          <div className="mt-8">
-            {user.premium ? (
-              <p className="flex items-center gap-2 font-bold"><Check /> You&apos;re on the full plan.</p>
+      <div className="mt-10 grid gap-5 md:grid-cols-2">
+        <PlanCard {...PLANS.free} footer={!user.premium ? <p className="text-sm font-semibold text-muted-foreground">Your current plan</p> : undefined} />
+        <PlanCard
+          {...PLANS.full}
+          highlight
+          footer={
+            user.premium ? (
+              <p className="font-bold">You&apos;re on the full plan.</p>
             ) : stripeConfigured ? (
               <form action={startCheckout}>
                 <button className="w-full rounded-md bg-background px-6 py-3.5 text-base font-semibold text-primary hover:bg-secondary active:translate-y-px sm:w-auto">
@@ -95,9 +54,9 @@ export default async function UpgradePage({
               </form>
             ) : (
               <p className="font-semibold">Payments are not switched on for this deployment yet.</p>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
       </div>
 
       <p className="mt-6 text-sm text-muted-foreground">

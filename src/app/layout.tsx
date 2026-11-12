@@ -85,6 +85,9 @@ async function Header() {
           <Link href="/catalog" className="hidden hover:text-primary sm:inline">
             Catalog
           </Link>
+          <Link href="/pricing" className="hidden hover:text-primary sm:inline">
+            Pricing
+          </Link>
           {me ? (
             <>
               <Link href={me.home} className="hover:text-primary">
@@ -123,6 +126,7 @@ function Footer() {
             <p className="font-bold">Explore</p>
             <ul className="mt-3 space-y-2 text-sm">
               <li><Link href="/catalog" className="hover:text-primary">Course Catalog</Link></li>
+              <li><Link href="/pricing" className="hover:text-primary">Pricing</Link></li>
               <li><Link href="/dashboard" className="hover:text-primary">My Learning</Link></li>
               <li><Link href="/catalog" className="hover:text-primary">Start a Credit Check</Link></li>
               <li><Link href="/evaluators" className="hover:text-primary">For Evaluators</Link></li>
